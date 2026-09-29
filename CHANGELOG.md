@@ -2,6 +2,19 @@
 
 Notable changes to FSL Master. Format: [Keep a Changelog](https://keepachangelog.com/), versions: [SemVer](https://semver.org/).
 
+## [0.2.0] - 2026-09-29
+
+### Added
+- **Host maintenance** page: curated, low-impact AVD host maintenance with risk levels (None/Low/Medium), presets (Diagnostics, Routine, Full),
+  dry run (default), preflight checks, cancellation, per-run JSON reports and run history. Tasks: DISM CheckHealth/ScanHealth/AnalyzeComponentStore,
+  SFC verify-only, CHKDSK online scan (read-only), DISM RestoreHealth and SFC /scannow (repair, confirmation), cleanup of old temp/WER/FSLogix-log/minidump
+  files, DISM StartComponentCleanup, DNS flush, ReTrim, best-practice scan (free space, folder sizes, page file, uptime, Defender + FSLogix exclusions, stale profiles).
+- **Windows updates** page: build/UBR, servicing status of the build, last cumulative update, pending updates from the host's update source (search only),
+  update history with failed installs, update policy and service health, plus a score.
+- Headless maintenance: `-RunMaintenance <preset|ids>` with `-Apply`, `-IncludeRepair`, `-MaintenanceReport` and exit codes for Task Scheduler.
+- Configuration keys `MaintTempAgeDays`, `MaintLogAgeDays`, `MaintDumpAgeDays`, `MaintDefaultDryRun`, `BuildLifecycle`.
+- 40 new unit tests (`tests\Maintenance.Tests.ps1`), docs/maintenance.md.
+
 ## [0.1.1] - 2026-09-29
 
 ### Changed

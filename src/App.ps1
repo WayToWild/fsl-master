@@ -1,7 +1,11 @@
 ﻿param(
     [switch]$AllowNonElevated,       # developer/testing switch: run without administrator rights (limited data)
     [string]$CaptureScreenshots,     # developer/testing: folder to write PNG screenshots of every page, then exit
-    [string]$SelfTest                # smoke test: collect data without GUI, write a JSON summary to this file, exit
+    [string]$SelfTest,               # smoke test: collect data without GUI, write a JSON summary to this file, exit
+    [string]$RunMaintenance,         # headless maintenance: a preset (Diagnostics|Routine|Full) or comma-separated task ids
+    [switch]$Apply,                  # with -RunMaintenance: really perform cleanup/repair (default is a dry run)
+    [switch]$IncludeRepair,          # with -RunMaintenance: allow repair tasks (DISM RestoreHealth, SFC /scannow)
+    [string]$MaintenanceReport       # with -RunMaintenance: also copy the JSON run report to this path
 )
 $ErrorActionPreference = 'Continue'
 
@@ -9,7 +13,7 @@ $ErrorActionPreference = 'Continue'
 if (-not $script:FslBundled) {
     $script:SrcRoot = $PSScriptRoot
     foreach ($m in 'Core\Core.ps1', 'Collectors\SystemInfo.ps1', 'Collectors\FSLogix.ps1', 'Collectors\Sessions.ps1', 'Collectors\Containers.ps1',
-        'Collectors\Events.ps1', 'Collectors\Health.ps1', 'Collectors\Collect.ps1', 'Export\Report.ps1', 'UI\Ui.ps1') {
+        'Collectors\Events.ps1', 'Collectors\Health.ps1', 'Collectors\Collect.ps1', 'Collectors\Maintenance.ps1', 'Collectors\Updates.ps1', 'Export\Report.ps1', 'UI\Ui.ps1', 'UI\UiMaintenance.ps1') {
         . (Join-Path $script:SrcRoot $m)
     }
     $script:FslBuildInfo = @{ BuildDate = 'development build (source)'; Commit = '' }
@@ -52,6 +56,33 @@ if ($SelfTest) {
     }
 }
 
+# ---------------------------------------------------------------- headless maintenance (for Task Scheduler / scripts)
+# Safe by default: without -Apply everything is a dry run, without -IncludeRepair repair tasks are dropped.
+# Exit codes: 0 = finished without errors, 1 = finished with task errors, 2 = blocked/aborted or invalid request.
+if ($RunMaintenance) {
+    try {
+        $cfg = Get-FslConfig
+        $catalog = @(Get-FslMaintenanceCatalog)
+        $ids = if ((Get-FslMaintenancePresets).Name -contains $RunMaintenance) { @(Get-FslMaintenancePresetIds -Preset $RunMaintenance) } else { @($RunMaintenance -split '[,;\s]+' | Where-Object { $_ }) }
+        $unknown = @($ids | Where-Object { $catalog.Id -notcontains $_ })
+        if ($unknown.Count -gt 0 -or $ids.Count -eq 0) { Write-FslLog -Level ERROR -Message "Headless maintenance: invalid task selection '$RunMaintenance'"; exit 2 }
+        if (-not $IncludeRepair) {
+            $dropped = @($catalog | Where-Object { $ids -contains $_.Id -and $_.Category -eq 'Repair' })
+            if ($dropped.Count -gt 0) { Write-FslLog -Level WARN -Message "Headless maintenance: repair tasks skipped (use -IncludeRepair): $($dropped.Id -join ', ')" }
+            $ids = @($ids | Where-Object { $_ -notin $dropped.Id })
+        }
+        $opts = @{ DryRun = (-not $Apply); StopOnError = $true; Config = $cfg; AllowNonElevated = [bool]$AllowNonElevated }
+        $run = Invoke-FslMaintenanceRun -TaskIds $ids -Options $opts -Sync ([hashtable]::Synchronized(@{ Cancel = $false }))
+        if ($MaintenanceReport -and $run.ReportPath) {
+            $v = Test-FslExportPath -Path $MaintenanceReport -AllowedExtensions @('.json')
+            if ($v.Valid) { Copy-Item -LiteralPath $run.ReportPath -Destination $v.Path -Force } else { Write-FslLog -Level WARN -Message "Maintenance report path rejected: $($v.Reason)" }
+        }
+        if ($run.Aborted) { exit 2 }
+        if ($run.Errors -gt 0) { exit 1 }
+        exit 0
+    } catch { Write-FslLog -Level ERROR -Message 'Headless maintenance failed' -Exception $_; exit 2 }
+}
+
 Add-Type -AssemblyName PresentationFramework, PresentationCore, WindowsBase, System.Xaml, System.Data
 
 # ---------------------------------------------------------------- elevation check
@@ -84,9 +115,11 @@ foreach ($m in [regex]::Matches($xaml, 'x:Name="(\w+)"')) { $n = $m.Groups[1].Va
 $script:PageMap = @{
     NavDashboard = 'PageDashboard'; NavConfig = 'PageConfig'; NavServices = 'PageServices'; NavSessions = 'PageSessions'; NavContainers = 'PageContainers'
     NavEvents = 'PageEvents'; NavLogs = 'PageLogs'; NavHealth = 'PageHealth'; NavReport = 'PageReport'; NavAbout = 'PageAbout'
+    NavUpdates = 'PageUpdates'; NavMaintenance = 'PageMaintenance'
 }
 $script:UiReady = $false
 Initialize-FslUiGrids
+Initialize-FslUiMaintenance
 Set-FslUiTheme -Name $script:Config.Theme
 
 # header info
@@ -235,6 +268,22 @@ $script:Ui.BtnRepHtml.Add_Click({ Invoke-FslUiReport -Format html })
 $script:Ui.BtnRepJson.Add_Click({ Invoke-FslUiReport -Format json })
 $script:Ui.BtnRepCsv.Add_Click({ Invoke-FslUiReport -Format csv })
 $script:Ui.BtnRepTxt.Add_Click({ Invoke-FslUiReport -Format txt })
+# host maintenance
+$script:Ui.BtnPresetDiag.Add_Click({ Set-FslUiMaintPreset -Preset 'Diagnostics' })
+$script:Ui.BtnPresetRoutine.Add_Click({ Set-FslUiMaintPreset -Preset 'Routine' })
+$script:Ui.BtnPresetFull.Add_Click({ Set-FslUiMaintPreset -Preset 'Full' })
+$script:Ui.BtnPresetNone.Add_Click({ Set-FslUiMaintPreset -Preset '' })
+$script:Ui.BtnMaintPreflight.Add_Click({ Start-FslUiMaintPreflight })
+$script:Ui.BtnMaintRun.Add_Click({ Start-FslUiMaintRun })
+$script:Ui.BtnMaintCancel.Add_Click({ Stop-FslUiMaintRun })
+$script:Ui.BtnMaintExport.Add_Click({ Invoke-FslUiExport -GridName 'GridMaintResults' -Format csv -Title 'Maintenance results' -BaseName 'fsl-maintenance' })
+$script:Ui.GridMaintResults.Add_SelectionChanged({ Show-FslUiMaintOutput })
+$script:Ui.ChkMaintDry.Add_Click({
+        if (-not $script:Ui.ChkMaintDry.IsChecked) { Show-FslUiMessage "Live mode: cleanup tasks will delete old files and repair tasks will modify system files.`n`nYou will be asked to confirm before anything starts." 'Dry run switched off' 'Warning' }
+    })
+# windows updates
+$script:Ui.BtnUpdCheck.Add_Click({ Start-FslUiUpdateCheck -Search $true })
+$script:Ui.BtnUpdCsv.Add_Click({ Invoke-FslUiExport -GridName 'GridUpdFindings' -Format csv -Title 'Windows update findings' -BaseName 'fsl-updates' })
 
 # unexpected exceptions on the UI thread: log, show short message + copyable details, keep running
 $win.Dispatcher.Add_UnhandledException({
@@ -261,7 +310,7 @@ if ($CaptureScreenshots) {
     New-Item -ItemType Directory -Force -Path $CaptureScreenshots | Out-Null
     $script:AfterFirstRefresh = {
         $i = 0
-        foreach ($nav in 'NavDashboard', 'NavConfig', 'NavServices', 'NavSessions', 'NavContainers', 'NavEvents', 'NavLogs', 'NavHealth', 'NavReport', 'NavAbout') {
+        foreach ($nav in 'NavDashboard', 'NavConfig', 'NavServices', 'NavSessions', 'NavContainers', 'NavEvents', 'NavLogs', 'NavHealth', 'NavUpdates', 'NavMaintenance', 'NavReport', 'NavAbout') {
             $i++
             $script:Ui[$nav].IsChecked = $true
             Wait-FslUiIdle -Ms 700

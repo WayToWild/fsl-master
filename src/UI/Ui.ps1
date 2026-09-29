@@ -58,6 +58,8 @@ function Invoke-FslUiJobPoll {
         $script:Ui.TxtStatus.Text = "Checking: $($script:Sync.Step)"
         $script:Ui.PbRefresh.Value = [double]$script:Sync.Progress
     }
+    if ($script:MaintRunning) { Update-FslUiMaintProgress }
+    if ($script:UpdRunning -and $script:UpdSync) { $script:Ui.TxtUpdInfo.Text = "$($script:UpdSync.Step)..." }
     foreach ($job in @($script:Jobs.ToArray())) {
         if (-not $job.Handle.IsCompleted) { continue }
         [void]$script:Jobs.Remove($job)
@@ -269,6 +271,19 @@ function Get-FslUiGridSpecs {
             @{ H = 'Evidence / data source'; P = 'Evidence'; W = 260 }, @{ H = 'Recommendation'; P = 'Recommendation'; W = 340 }, @{ H = 'Time'; P = 'Time'; W = 140 })
         GridDashIssues = @(
             @{ S = $true; H = 'Status'; W = 135 }, @{ H = 'Category'; P = 'Category'; W = 90 }, @{ H = 'Check'; P = 'Check'; W = 240 }, @{ H = 'Result'; P = 'Result'; W = 340 }, @{ H = 'Recommendation'; P = 'Recommendation'; W = 400 })
+        GridUpdFindings = @(
+            @{ S = $true; H = 'Status'; W = 135 }, @{ H = 'Check'; P = 'Check'; W = 230 }, @{ H = 'Result'; P = 'Result'; W = 380 }, @{ H = 'Evidence'; P = 'Evidence'; W = 240 }, @{ H = 'Recommendation'; P = 'Recommendation'; W = 460 })
+        GridUpdPending = @(
+            @{ H = 'Type'; P = 'Class'; W = 80 }, @{ H = 'Update'; P = 'Title'; W = 420 }, @{ H = 'KB'; P = 'Kb'; W = 80 }, @{ H = 'Severity'; P = 'Severity'; W = 80 },
+            @{ H = 'Size'; P = 'SizeText'; W = 75; M = 'SizeBytes' }, @{ H = 'Reboot'; P = 'RebootRequired'; W = 60 }, @{ H = 'Categories'; P = 'Categories'; W = 240 })
+        GridUpdHistory = @(
+            @{ H = 'Date'; P = 'Date'; W = 140; F = 'yyyy-MM-dd HH:mm' }, @{ H = 'Action'; P = 'Kind'; W = 70 }, @{ H = 'Result'; P = 'Result'; W = 130 }, @{ H = 'Update'; P = 'Title'; W = 460 }, @{ H = 'HRESULT'; P = 'HResult'; W = 90 })
+        GridMaintResults = @(
+            @{ S = $true; H = 'Status'; W = 135 }, @{ H = 'Task'; P = 'Name'; W = 230 }, @{ H = 'Risk'; P = 'Risk'; W = 60 }, @{ H = 'Duration'; P = 'Duration'; W = 80 }, @{ H = 'Result'; P = 'Summary'; W = 420 },
+            @{ H = 'Recommendation'; P = 'Recommendation'; W = 420 }, @{ H = 'Id'; P = 'Id'; W = 150 })
+        GridMaintHistory = @(
+            @{ H = 'Started'; P = 'Started'; W = 140; F = 'yyyy-MM-dd HH:mm' }, @{ H = 'Mode'; P = 'ModeText'; W = 70 }, @{ H = 'Tasks'; P = 'Tasks'; W = 55 }, @{ H = 'OK'; P = 'Ok'; W = 45 }, @{ H = 'Warnings'; P = 'Warnings'; W = 70 },
+            @{ H = 'Errors'; P = 'Errors'; W = 55 }, @{ H = 'Aborted'; P = 'Aborted'; W = 300 }, @{ H = 'Report file'; P = 'Path'; W = 500 })
     }
 }
 
@@ -643,6 +658,8 @@ function Show-FslUiPage {
     foreach ($k in $script:PageMap.Keys) { $script:Ui[$script:PageMap[$k]].Visibility = 'Collapsed' }
     $script:Ui[$script:PageMap[$Page]].Visibility = 'Visible'
     if ($Page -eq 'NavLogs' -and $script:Ui.GridLogFiles.Items.Count -eq 0) { Update-FslUiLogFileList }
+    if ($Page -eq 'NavUpdates' -and -not $script:UpdStatus) { Start-FslUiUpdateCheck -Search $false }
+    if ($Page -eq 'NavMaintenance') { Update-FslUiMaintHistory }
 }
 
 function Invoke-FslUiExport {

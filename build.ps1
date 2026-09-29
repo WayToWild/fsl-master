@@ -17,7 +17,7 @@ $src = Join-Path $root 'src'
 $dist = Join-Path $root 'dist'
 $buildDir = Join-Path $root 'build'
 $ps2exeVersion = '1.0.18'
-$version = '0.1.1'
+$version = '0.2.0'
 $steps = New-Object System.Collections.Generic.List[string]
 function Step($m) { $steps.Add($m); Write-Output ("[build] " + $m) }
 function Fail($m) { throw "BUILD FAILED: $m" }
@@ -55,7 +55,7 @@ if ($hits) { $hits | ForEach-Object { Write-Output "  FORBIDDEN: $($_.Path):$($_
 # ---------------------------------------------------------------- 4. tests
 if (-not $SkipTests) {
     Step '3/9 Running Pester tests'
-    $res = Invoke-Pester -Script (Join-Path $root 'tests\FslMaster.Tests.ps1') -PassThru -Quiet
+    $res = Invoke-Pester -Script @((Join-Path $root 'tests\FslMaster.Tests.ps1'), (Join-Path $root 'tests\Maintenance.Tests.ps1')) -PassThru -Quiet
     Step "  Passed: $($res.PassedCount), failed: $($res.FailedCount)"
     if ($res.FailedCount -gt 0) { $res.TestResult | Where-Object { -not $_.Passed } | ForEach-Object { Write-Output "  FAIL: $($_.Describe) / $($_.Name): $($_.FailureMessage)" }; Fail 'Tests failed.' }
 } else { Step '3/9 Pester tests skipped (-SkipTests)' }
@@ -67,7 +67,7 @@ try { $commit = (& git -C $root rev-parse --short HEAD 2>$null) } catch { }
 if ($LASTEXITCODE -ne 0) { $commit = '' }
 $buildDate = (Get-Date).ToString('yyyy-MM-dd HH:mm')
 $modules = 'Core\Core.ps1', 'Collectors\SystemInfo.ps1', 'Collectors\FSLogix.ps1', 'Collectors\Sessions.ps1', 'Collectors\Containers.ps1',
-'Collectors\Events.ps1', 'Collectors\Health.ps1', 'Collectors\Collect.ps1', 'Export\Report.ps1', 'UI\Ui.ps1'
+'Collectors\Events.ps1', 'Collectors\Health.ps1', 'Collectors\Collect.ps1', 'Collectors\Maintenance.ps1', 'Collectors\Updates.ps1', 'Export\Report.ps1', 'UI\Ui.ps1', 'UI\UiMaintenance.ps1'
 $app = [IO.File]::ReadAllText((Join-Path $src 'App.ps1'), [Text.Encoding]::UTF8)
 $rx = [regex]'(?s)#region MODULES.*?#endregion MODULES'
 if (-not $rx.IsMatch($app)) { Fail 'MODULES region not found in App.ps1.' }
@@ -135,7 +135,7 @@ if (-not $SkipSmoke) {
     $p2 = Start-Process -FilePath $psExe -ArgumentList @('-STA', '-NoProfile', '-File', "`"$bundlePath`"", '-AllowNonElevated', '-CaptureScreenshots', "`"$shots`"") -PassThru -WindowStyle Hidden -RedirectStandardError $errFile -RedirectStandardOutput $outFile
     if (-not $p2.WaitForExit(240000)) { try { $p2.Kill() } catch { }; Fail 'Smoke test GUI: timeout.' }
     $png = @(Get-ChildItem $shots -Filter *.png -ErrorAction SilentlyContinue)
-    if ($png.Count -lt 12) { Fail "Smoke test GUI: expected 12 screenshots, found $($png.Count)." }
+    if ($png.Count -lt 14) { Fail "Smoke test GUI: expected 14 screenshots, found $($png.Count)." }
     $stray = (Get-Content $outFile -Raw -ErrorAction SilentlyContinue)
     $strayErr = (Get-Content $errFile -Raw -ErrorAction SilentlyContinue)
     if ($stray -or $strayErr) { Fail "Smoke test GUI: unexpected output/errors (would appear as message boxes in the noConsole exe):`n$stray`n$strayErr" }

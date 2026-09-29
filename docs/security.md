@@ -3,10 +3,15 @@
 ## Principles
 
 - **Read-only by default.** No registry values are changed, no containers are detached, no VHDs are repaired and no profiles
-  are deleted. The health check does not run `DISM /RestoreHealth`, `sfc /scannow` or `chkdsk /f`.
-- **Management actions** are limited to start/stop/restart of the services `frxsvc` and `frxccds`. They are clearly marked, ask for
-  explicit confirmation (default button *No*, extra warning for stop/restart), run locally and are logged
-  (`[ACTION]` in the log file). The function accepts no other service names (`ValidateSet`).
+  are deleted. The health check and the *Windows updates* page never run `DISM /RestoreHealth`, `sfc /scannow` or `chkdsk /f`
+  and never download or install updates.
+- **Management actions** are (1) start/stop/restart of the services `frxsvc` and `frxccds` and (2) the tasks of the *Host maintenance*
+  page. They are clearly marked, ask for explicit confirmation (default button *No*, extra warnings for stop/restart and repair),
+  run locally and are logged (`[ACTION]` in the log file). The service function accepts no other service names (`ValidateSet`).
+- **Maintenance safety** (details in [maintenance.md](maintenance.md)): risk levels per task, dry run on by default, preflight checks,
+  reduced process priority with timeouts and cancellation, a fixed whitelist of cleanup folders (no junction following, files in use are
+  skipped, minimum age of 1 day), a run-wide mutex, no automatic reboot, and deliberately no `chkdsk /f`, `DISM /ResetBase`, event log
+  clearing or profile deletion. Headless runs default to dry run and exclude repair tasks unless `-Apply` / `-IncludeRepair` are given.
 - **Local only.** No PowerShell Remoting, WinRM, `Invoke-Command` to other hosts, central databases, Azure APIs or
   mandatory internet connection. `build.ps1` fails when such constructs appear in the source.
 - **No telemetry, no automatic uploads, no dynamically downloaded code.**

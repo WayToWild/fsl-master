@@ -6,7 +6,7 @@ function Get-FslAppInfo {
     [pscustomobject]@{
         Name        = 'FSL Master'
         Description = 'Local FSLogix diagnostics and monitoring for Azure Virtual Desktop'
-        Version     = '0.1.1'
+        Version     = '0.2.0'
         License     = 'MIT'
         RepoUrl     = 'https://github.com/WayToWild/fsl-master'
     }
@@ -116,6 +116,11 @@ function Get-FslDefaultConfig {
         LowDiskWarnPercent = 10
         LowDiskErrorPercent = 5
         NetworkTimeoutMs   = 3000
+        MaintTempAgeDays   = 7
+        MaintLogAgeDays    = 30
+        MaintDumpAgeDays   = 30
+        MaintDefaultDryRun = $true
+        BuildLifecycle     = @()
     }
 }
 
@@ -139,9 +144,11 @@ function Get-FslConfig {
     $ids = @()
     foreach ($i in @($cfg.MarkedEventIds)) { $n = 0; if ([int]::TryParse("$i", [ref]$n) -and $n -gt 0) { $ids += $n } }
     $cfg.MarkedEventIds = $ids
-    foreach ($k in 'LookbackHours', 'MaxEvents', 'AutoRefreshSeconds', 'LowDiskWarnPercent', 'LowDiskErrorPercent', 'NetworkTimeoutMs') {
+    foreach ($k in 'LookbackHours', 'MaxEvents', 'AutoRefreshSeconds', 'LowDiskWarnPercent', 'LowDiskErrorPercent', 'NetworkTimeoutMs', 'MaintTempAgeDays', 'MaintLogAgeDays', 'MaintDumpAgeDays') {
         $n = 0; if (-not [int]::TryParse("$($cfg[$k])", [ref]$n) -or $n -lt 0) { $cfg[$k] = (Get-FslDefaultConfig)[$k] } else { $cfg[$k] = $n }
     }
+    foreach ($k in 'MaintTempAgeDays', 'MaintLogAgeDays', 'MaintDumpAgeDays') { if ($cfg[$k] -lt 1) { $cfg[$k] = (Get-FslDefaultConfig)[$k] } }   # never allow "delete everything now"
+    $cfg.MaintDefaultDryRun = [bool]$cfg.MaintDefaultDryRun
     if ($cfg.LookbackHours -lt 1) { $cfg.LookbackHours = 24 }
     if ($cfg.MaxEvents -lt 100) { $cfg.MaxEvents = 100 }
     if ($cfg.MaxEvents -gt 20000) { $cfg.MaxEvents = 20000 }

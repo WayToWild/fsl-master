@@ -15,6 +15,7 @@ sessions, containers, events, log files and a health score. By default the appli
 |---|---|
 | ![Containers](docs/screenshots/05-containers.png) | ![Events](docs/screenshots/06-events.png) |
 | ![Health check](docs/screenshots/08-health.png) | ![Light theme](docs/screenshots/11-dashboard-light.png) |
+| ![Windows updates](docs/screenshots/09-updates.png) | ![Host maintenance](docs/screenshots/10-maintenance.png) |
 
 ## Features
 
@@ -39,6 +40,14 @@ sessions, containers, events, log files and a health score. By default the appli
   timeout, locked, LoadProfile, VHD, VHDX, Cloud Cache), copy lines and export a fragment.
 - **Health check** – read-only checks for FSLogix, storage, network (DNS, port 445, UNC access), Windows and AVD, with status, result,
   evidence, recommendation, timestamp and a score of 0–100 ([calculation](#health-score-calculation)).
+- **Windows updates** – how your Windows build is holding up: build/UBR, servicing status of the build (reference table),
+  last cumulative update, pending updates from your own update source (WSUS / Windows Update, **search only – nothing is
+  downloaded or installed**), recent update history with failed installs, update policy and service health, plus a score.
+- **Host maintenance** – low-impact AVD host maintenance you run yourself, with risk levels, presets, a dry-run mode (on by
+  default), preflight checks, cancel, and a saved report per run: DISM CheckHealth/ScanHealth/AnalyzeComponentStore, SFC
+  verify-only, CHKDSK online scan (read-only), optional DISM RestoreHealth and SFC /scannow (repair, confirmation required),
+  cleanup of old temp/WER/FSLogix-log/minidump files, DISM StartComponentCleanup, DNS flush, ReTrim and a best-practice scan.
+  Can also be started headless (`-RunMaintenance`) for Task Scheduler. See [docs/maintenance.md](docs/maintenance.md).
 - **Reporting** – HTML, JSON, CSV (per section) and TXT, optionally as a **Sanitized report** (user names, SIDs, server names,
   domain names and UNC paths masked).
 - **Other** – auto-refresh (off/30 s/60 s/5 min) without overlapping runs, progress per data source, error isolation per data source,
@@ -92,9 +101,16 @@ non-elevated instance then exits.
   "AutoRefreshSeconds": 0,
   "LowDiskWarnPercent": 10,
   "LowDiskErrorPercent": 5,
-  "NetworkTimeoutMs": 3000
+  "NetworkTimeoutMs": 3000,
+  "MaintTempAgeDays": 7,
+  "MaintLogAgeDays": 30,
+  "MaintDumpAgeDays": 30,
+  "MaintDefaultDryRun": true,
+  "BuildLifecycle": [ { "Build": 26200, "Name": "Windows 11 25H2", "EndOfServicing": "2028-10-10" } ]
 }
 ```
+
+`BuildLifecycle` adds or overrides entries of the built-in servicing reference table used on the *Windows updates* page.
 
 The meaning of an Event ID is deliberately **not** assumed: the list only highlights; provider, log and message text remain authoritative.
 
@@ -137,14 +153,14 @@ fsl-master\
 ├── src\
 │   ├── App.ps1                 entry point (params, elevation check, window, wiring)
 │   ├── Core\Core.ps1           constants, result model, logging, config, timeouts, export path validation
-│   ├── Collectors\             SystemInfo, FSLogix, Sessions, Containers, Events, Health, Collect (orchestrator)
+│   ├── Collectors\             SystemInfo, FSLogix, Sessions, Containers, Events, Health, Collect (orchestrator), Maintenance, Updates
 │   ├── Export\Report.ps1       sanitizing, report model, JSON/CSV/HTML/TXT
 │   └── UI\                     MainWindow.xaml and Ui.ps1 (WPF helpers)
 ├── tests\FslMaster.Tests.ps1   Pester tests
 ├── build\                      helper scripts (icon, BOM), work folder
 ├── dist\                       build output (not in Git)
 ├── assets\                     icon
-├── docs\                       architecture, building, security, troubleshooting, screenshots
+├── docs\                       architecture, building, maintenance, security, troubleshooting, screenshots
 ├── build.ps1  start-dev.ps1  README.md  CHANGELOG.md  LICENSE
 ```
 
@@ -179,6 +195,14 @@ score = round( 100 × Σ(weight × points) / Σ(weight)  over all scored checks 
 - **The development machine had no FSLogix.** All code paths that need FSLogix (containers, redirects, FSLogix event logs,
   log files, service actions) were tested with mocks and synthetic samples, not against a real FSLogix installation.
   The GUI was fully rendered and checked with synthetic data.
+- **Maintenance tools were not run elevated on the development machine** (the development session was not elevated). The task
+  catalog, safety rules (path whitelist, dry run, junction handling, preflight, cancel/timeouts), the output interpreters and the
+  run orchestration are covered by 40 unit tests, and the headless run was exercised end to end without elevation (DISM then
+  correctly reports "needs administrator"). DISM/SFC/CHKDSK result texts are recognised for **English** Windows; on other languages
+  the result is *Unknown* (DISM CheckHealth falls back to the DISM API) and the raw output is shown. Try the *Diagnostics* preset on a
+  test host first.
+- The Windows servicing lifecycle table is reference data included in the app (24H2 and 25H2 dates etc.); verify it against
+  Microsoft's lifecycle pages and override it in the configuration file if needed.
 - **`frx list-redirects` has no documented, stable output format.** The parser recognises records by SID, VHD(X) path and
   redirect target (best effort). The raw output is always visible on the *frx output (raw)* tab.
 - Which values exist under `HKLM\SOFTWARE\FSLogix\Profiles\Sessions\<SID>` differs per FSLogix version; therefore all
@@ -196,7 +220,8 @@ score = round( 100 × Σ(weight × points) / Σ(weight)  over all scored checks 
 
 ## Security information
 
-In short: read-only by default, every management action with confirmation + logging, no telemetry, no runtime downloads, no
+In short: read-only by default, every management action (service actions, maintenance cleanup/repair) with confirmation + logging
+(maintenance additionally defaults to dry run and never reboots or runs `chkdsk /f`), no telemetry, no runtime downloads, no
 ExecutionPolicy bypass, all HTML output escaped, export paths validated. Details in [docs/security.md](docs/security.md).
 
 ## Troubleshooting

@@ -194,6 +194,8 @@
           <RadioButton x:Name="NavEvents" Style="{StaticResource NavBtn}" GroupName="nav" Content="Events"/>
           <RadioButton x:Name="NavLogs" Style="{StaticResource NavBtn}" GroupName="nav" Content="FSLogix log files"/>
           <RadioButton x:Name="NavHealth" Style="{StaticResource NavBtn}" GroupName="nav" Content="Health check"/>
+          <RadioButton x:Name="NavUpdates" Style="{StaticResource NavBtn}" GroupName="nav" Content="Windows updates"/>
+          <RadioButton x:Name="NavMaintenance" Style="{StaticResource NavBtn}" GroupName="nav" Content="Host maintenance"/>
           <RadioButton x:Name="NavReport" Style="{StaticResource NavBtn}" GroupName="nav" Content="Reporting"/>
           <RadioButton x:Name="NavAbout" Style="{StaticResource NavBtn}" GroupName="nav" Content="About FSL Master"/>
         </StackPanel>
@@ -375,6 +377,69 @@
             <Button x:Name="BtnHealthCopy" Content="Copy selection"/>
           </StackPanel>
           <DataGrid x:Name="GridHealth" Grid.Row="2"/>
+        </Grid>
+
+        <!-- Windows updates -->
+        <Grid x:Name="PageUpdates" Visibility="Collapsed">
+          <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+          <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,8">
+            <Button x:Name="BtnUpdCheck" Content="&#x21BB; Check for updates" ToolTip="Searches the configured update source (WSUS/Windows Update). Read-only: nothing is downloaded or installed."/>
+            <Button x:Name="BtnUpdCsv" Content="Export findings CSV"/>
+            <TextBlock x:Name="TxtUpdInfo" VerticalAlignment="Center" Foreground="{DynamicResource MutedBrush}" Margin="8,0,0,0" TextWrapping="Wrap"/>
+          </StackPanel>
+          <WrapPanel x:Name="WpUpdCards" Grid.Row="1"/>
+          <DataGrid x:Name="GridUpdFindings" Grid.Row="2" Height="190" Margin="0,0,0,8"/>
+          <Grid Grid.Row="3">
+            <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="12"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+            <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+            <TextBlock Grid.Column="0" Text="Pending updates (not installed)" FontWeight="SemiBold" Margin="0,0,0,4"/>
+            <TextBlock Grid.Column="2" Text="Recent update history" FontWeight="SemiBold" Margin="0,0,0,4"/>
+            <DataGrid x:Name="GridUpdPending" Grid.Row="1" Grid.Column="0"/>
+            <DataGrid x:Name="GridUpdHistory" Grid.Row="1" Grid.Column="2"/>
+          </Grid>
+        </Grid>
+
+        <!-- Host maintenance -->
+        <Grid x:Name="PageMaintenance" Visibility="Collapsed">
+          <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="2*" MinHeight="150"/><RowDefinition Height="Auto"/>
+            <RowDefinition Height="2*" MinHeight="130"/><RowDefinition Height="Auto"/>
+          </Grid.RowDefinitions>
+          <StackPanel Grid.Row="0" Margin="0,0,0,6">
+            <TextBlock TextWrapping="Wrap" Foreground="{DynamicResource MutedBrush}" Margin="0,0,0,6"
+                       Text="Low-impact maintenance for AVD session hosts. Tools run at reduced priority with a timeout and can be cancelled. Nothing runs automatically and the host is never rebooted. Tip: put the host in drain mode first."/>
+            <StackPanel Orientation="Horizontal">
+              <TextBlock Text="Presets:" VerticalAlignment="Center" Margin="0,0,8,0"/>
+              <Button x:Name="BtnPresetDiag" Content="Diagnostics (read-only)" ToolTip="Read-only checks. Nothing is changed."/>
+              <Button x:Name="BtnPresetRoutine" Content="Routine (safe cleanup)" ToolTip="Quick checks plus low-risk cleanup of old temp/log/dump files."/>
+              <Button x:Name="BtnPresetFull" Content="Full (incl. repair)" ToolTip="Adds DISM RestoreHealth and SFC /scannow. Use in a maintenance window."/>
+              <Button x:Name="BtnPresetNone" Content="Clear selection"/>
+            </StackPanel>
+          </StackPanel>
+          <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,6">
+            <CheckBox x:Name="ChkMaintDry" Content="Dry run (preview only: cleanup and repair tasks change nothing)" IsChecked="True"/>
+            <CheckBox x:Name="ChkMaintStop" Content="Stop on first error" IsChecked="True"/>
+          </StackPanel>
+          <DataGrid x:Name="GridMaintTasks" Grid.Row="2" IsReadOnly="False"/>
+          <StackPanel Grid.Row="3" Margin="0,8,0,6">
+            <StackPanel Orientation="Horizontal">
+              <Button x:Name="BtnMaintPreflight" Content="Preflight check"/>
+              <Button x:Name="BtnMaintRun" Content="&#x25B6; Run selected tasks"/>
+              <Button x:Name="BtnMaintCancel" Content="&#x25A0; Cancel" IsEnabled="False"/>
+              <Button x:Name="BtnMaintExport" Content="Export results CSV"/>
+              <ProgressBar x:Name="PbMaint" Width="200" Height="10" Minimum="0" Maximum="100" VerticalAlignment="Center" Margin="8,0,8,0"/>
+              <TextBlock x:Name="TxtMaintStatus" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+            </StackPanel>
+          </StackPanel>
+          <Grid Grid.Row="4">
+            <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="10"/><ColumnDefinition Width="1.1*"/></Grid.ColumnDefinitions>
+            <DataGrid x:Name="GridMaintResults" Grid.Column="0"/>
+            <TextBox x:Name="TxtMaintOutput" Grid.Column="2" IsReadOnly="True" FontFamily="Consolas" TextWrapping="NoWrap" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto" AcceptsReturn="True"/>
+          </Grid>
+          <StackPanel Grid.Row="5" Margin="0,8,0,0">
+            <TextBlock Text="Previous runs (reports are stored in the FSL Master log folder)" FontWeight="SemiBold" Margin="0,0,0,4"/>
+            <DataGrid x:Name="GridMaintHistory" MaxHeight="110" MinHeight="50"/>
+          </StackPanel>
         </Grid>
 
         <!-- Report -->
