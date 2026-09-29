@@ -78,7 +78,7 @@ Describe 'FSLogix installation and frx.exe detection' {
         It 'service info does not crash and marks services N/A when FSLogix is absent' {
             # isolate from the real host (this machine may have FSLogix installed)
             Mock Get-CimInstance { @() }
-            Mock Get-Process { $null }
+            Mock Get-Process { @() }
             $rows = Get-FslServiceInfo -Install ([pscustomobject]@{ Installed = $false; InstallDir = $null }) -ConfigLookup @{}
             @($rows | Where-Object { $_.Kind -eq 'Installatie' }).Count | Should Be 1
             (@($rows | Where-Object { $_.Name -eq 'frxsvc' })[0]).Status | Should Be 'NA'
