@@ -146,7 +146,11 @@ if (-not $SkipSmoke) {
     try {
         Invoke-ps2exe @common -outputFile $smoke | Out-Null
         $json2 = Join-Path $work 'selftest-exe.json'
-        $pe = Start-Process -FilePath $smoke -ArgumentList @('-SelfTest', "`"$json2`"", '-AllowNonElevated') -PassThru -WindowStyle Hidden -ErrorAction Stop
+        $pe = $null
+        for ($attempt = 1; $attempt -le 4 -and -not $pe; $attempt++) {   # security software may deny the first launches of a new unsigned exe
+            try { $pe = Start-Process -FilePath $smoke -ArgumentList @('-SelfTest', "`"$json2`"", '-AllowNonElevated') -PassThru -WindowStyle Hidden -ErrorAction Stop }
+            catch { if ($attempt -eq 4) { throw }; Start-Sleep -Seconds 4 }
+        }
         if (-not $pe.WaitForExit(240000)) { try { $pe.Kill() } catch { }; Fail 'Smoke-test exe: time-out.' }
         if (-not (Test-Path $json2)) { Fail 'Smoke-test exe: geen resultaatbestand.' }
         $r2 = Get-Content $json2 -Raw | ConvertFrom-Json

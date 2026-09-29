@@ -176,8 +176,11 @@ score = afronden( 100 × Σ(gewicht × punten) / Σ(gewicht)  over alle gescoord
   waarden gelezen en wordt het VHD(X)-pad op inhoud herkend.
 - Default-waarden worden alleen getoond als ze in de Microsoft-documentatie staan; ze kunnen per FSLogix-versie afwijken.
 - De gecompileerde `fsl-master.exe` is **niet ondertekend**. Antivirus/EDR of WDAC kan niet-ondertekende (PS2EXE-)executables blokkeren
-  of als vals-positief markeren; op de ontwikkelmachine werd het starten van *elke* niet-ondertekende exe geblokkeerd. Onderteken de
-  exe met een eigen code-signing-certificaat in beheerde omgevingen.
+  of als vals-positief markeren. Op de ontwikkelmachine werd het starten van (ook triviale, zelf gecompileerde) niet-ondertekende
+  executables vrijwel altijd geblokkeerd (*Access is denied*). Eén keer slaagde een niet-verhoogde zelftest van een gecompileerde
+  tweeling van dezelfde bundel (hostgegevens, runspaces en health check werkten in de PS2EXE-host); de GUI vanuit de exe en de
+  echte, verhoogde `fsl-master.exe` zijn **niet** door de ontwikkelaar gestart. De GUI is wel met exact dezelfde bundel als
+  script gerenderd en gecontroleerd. Test de exe dus eerst op de doelhost en onderteken hem met een eigen code-signing-certificaat in beheerde omgevingen.
 - Alleen de lokale host; geen multihost, geen remoting, geen historie tussen sessies.
 - Cloud Cache: alleen SMB-locaties (`type=smb`) worden op bereikbaarheid getest; Azure Blob-providers niet.
 - Ondersteund: Windows PowerShell 5.1. PowerShell 7 is niet getest.
