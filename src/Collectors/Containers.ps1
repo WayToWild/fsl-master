@@ -4,7 +4,7 @@ function Invoke-FslFrx {
     # Runs frx.exe with a timeout. Returns @{ Ok; TimedOut; ExitCode; Output }
     param([string]$FrxPath, [string[]]$Arguments, [int]$TimeoutMs = 20000)
     if (-not $FrxPath -or -not (Test-Path -LiteralPath $FrxPath -PathType Leaf)) {
-        return [pscustomobject]@{ Ok = $false; TimedOut = $false; ExitCode = $null; Output = ''; Error = 'frx.exe niet gevonden.' }
+        return [pscustomobject]@{ Ok = $false; TimedOut = $false; ExitCode = $null; Output = ''; Error = 'frx.exe not found.' }
     }
     try {
         $psi = New-Object Diagnostics.ProcessStartInfo
@@ -19,7 +19,7 @@ function Invoke-FslFrx {
         $errTask = $p.StandardError.ReadToEndAsync()
         if (-not $p.WaitForExit($TimeoutMs)) {
             try { $p.Kill() } catch { }
-            return [pscustomobject]@{ Ok = $false; TimedOut = $true; ExitCode = $null; Output = ''; Error = 'Time-out' }
+            return [pscustomobject]@{ Ok = $false; TimedOut = $true; ExitCode = $null; Output = ''; Error = 'Timeout' }
         }
         $null = $outTask.Wait(2000)
         $text = $outTask.Result
@@ -113,7 +113,7 @@ function Get-FslLocalProfileList {
     foreach ($k in @($Profiles.Keys)) {
         $p = $Profiles[$k]
         $acct = Get-FslAccountForSid $p.Sid
-        [pscustomobject]@{ Sid = $p.Sid; User = $acct; LocalPath = $p.LocalPath; Loaded = $(if ($null -ne $p.Loaded) { $(if ($p.Loaded) { 'Ja' } else { 'Nee' }) } else { '' }); Status = $p.Status; LastUse = $p.LastUse }
+        [pscustomobject]@{ Sid = $p.Sid; User = $acct; LocalPath = $p.LocalPath; Loaded = $(if ($null -ne $p.Loaded) { $(if ($p.Loaded) { 'Yes' } else { 'No' }) } else { '' }); Status = $p.Status; LastUse = $p.LastUse }
     }
 }
 
@@ -129,7 +129,7 @@ function Get-FslContainers {
         if ($res.TimedOut) { $frxNote = 'frx.exe list-redirects: time-out.' }
         elseif ($res.Error) { $frxNote = "frx.exe: $($res.Error)" }
         else { $frxOk = $true; $records = @(ConvertFrom-FslFrxRedirects -Text $raw) }
-    } else { $frxNote = 'frx.exe niet gevonden.' }
+    } else { $frxNote = 'frx.exe not found.' }
 
     $volumes = @(Get-FslMountedVhdVolumes)
     $smb = @(Get-FslSmbConnections)
@@ -175,7 +175,7 @@ function Get-FslContainers {
     }
     foreach ($v in $volumes) {
         if ($usedVolumes.ContainsKey($v.Path) -or -not $v.User) { continue }
-        $cand = [pscustomobject]@{ Sid = $null; SessionId = $null; Type = $v.Type; Vhd = $null; Target = $null; Volume = $v.Path; Source = 'Gekoppeld volume'; Details = "Label: $($v.Label)" }
+        $cand = [pscustomobject]@{ Sid = $null; SessionId = $null; Type = $v.Type; Vhd = $null; Target = $null; Volume = $v.Path; Source = 'Mounted volume'; Details = "Label: $($v.Label)" }
         $rows.Add((New-FslContainerRow -Cand $cand -User $v.User -Type $v.Type -Volume $v -Smb $smb -NetCache ([ref]$netCache) -TimeoutMs $TimeoutMs -SessionsUnknown $false))
     }
     [pscustomobject]@{
@@ -199,17 +199,17 @@ function New-FslContainerRow {
         $cache = $NetCache.Value
         if (-not $cache.ContainsKey($server)) { $cache[$server] = Test-FslTcpPort -ComputerName $server -Port 445 -TimeoutMs $TimeoutMs }
         $net = $cache[$server]
-        if ($net -eq 'Timeout') { $warnings.Add("Time-out bij bereiken van $server (poort 445)."); $status = 'Warning'; $net = 'Time-out' }
-        elseif ($net -ne 'Open') { $warnings.Add("$server niet bereikbaar op poort 445."); $status = 'Warning' }
+        if ($net -eq 'Timeout') { $warnings.Add("Timeout reaching $server (port 445)."); $status = 'Warning'; $net = 'Timeout' }
+        elseif ($net -ne 'Open') { $warnings.Add("$server not reachable on port 445."); $status = 'Warning' }
         else {
             $r = Invoke-FslWithTimeout -TimeoutMs ($TimeoutMs + 2000) -ArgumentList @($Cand.Vhd) -ScriptBlock {
                 param($p)
                 if (Test-Path -LiteralPath $p -PathType Leaf) { $i = Get-Item -LiteralPath $p -Force; [pscustomobject]@{ Length = $i.Length; Modified = $i.LastWriteTime } } else { 'MISSING' }
             }
-            if ($r.TimedOut) { $warnings.Add('Time-out bij lezen van containerbestand.'); $status = 'Warning'; $net = 'Time-out' }
+            if ($r.TimedOut) { $warnings.Add('Timeout reading container file.'); $status = 'Warning'; $net = 'Timeout' }
             else {
                 $v = $r.Result | Select-Object -First 1
-                if ($v -is [string] -and $v -eq 'MISSING') { $warnings.Add('Containerbestand niet gevonden of geen toegang.') }
+                if ($v -is [string] -and $v -eq 'MISSING') { $warnings.Add('Container file not found or no access.') }
                 elseif ($v) { $size = [int64]$v.Length; $mod = $v.Modified }
             }
         }
@@ -223,14 +223,14 @@ function New-FslContainerRow {
         if ($Volume.Health -and $Volume.Health -ne 'Healthy') { $warnings.Add("Volume health: $($Volume.Health)."); $status = 'Error' }
         if ($Volume.Size -gt 0) {
             $freePct = ($Volume.Free / $Volume.Size) * 100
-            if ($freePct -lt 5) { $warnings.Add(('Container bijna vol ({0:N1}% vrij).' -f $freePct)); $status = 'Error' }
-            elseif ($freePct -lt 10) { $warnings.Add(('Container raakt vol ({0:N1}% vrij).' -f $freePct)); if ($status -eq 'OK') { $status = 'Warning' } }
+            if ($freePct -lt 5) { $warnings.Add(('Container almost full ({0:N1}% free).' -f $freePct)); $status = 'Error' }
+            elseif ($freePct -lt 10) { $warnings.Add(('Container is filling up ({0:N1}% free).' -f $freePct)); if ($status -eq 'OK') { $status = 'Warning' } }
         }
     } else {
         if ($status -eq 'OK') { $status = 'Unknown' }
-        $warnings.Add('Geen gekoppeld volume gevonden.')
+        $warnings.Add('No mounted volume found.')
     }
-    if ($warnings.Count -gt 1 -or ($warnings.Count -eq 1 -and $warnings[0] -ne 'Geen gekoppeld volume gevonden.')) {
+    if ($warnings.Count -gt 1 -or ($warnings.Count -eq 1 -and $warnings[0] -ne 'No mounted volume found.')) {
         if ($status -eq 'Unknown') { $status = 'Warning' }
     }
     [pscustomobject]@{

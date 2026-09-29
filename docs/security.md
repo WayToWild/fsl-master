@@ -1,44 +1,44 @@
 # Security
 
-## Uitgangspunten
+## Principles
 
-- **Standaard read-only.** Er worden geen registerwaarden gewijzigd, geen containers ontkoppeld, geen VHD's hersteld en geen profielen
-  verwijderd. De health check voert geen `DISM /RestoreHealth`, `sfc /scannow` of `chkdsk /f` uit.
-- **Beheeracties** zijn beperkt tot start/stop/herstart van de services `frxsvc` en `frxccds`. Ze zijn duidelijk gemarkeerd, vragen
-  een expliciete bevestiging (standaardknop *Nee*, extra waarschuwing bij stop/herstart), worden lokaal uitgevoerd en gelogd
-  (`[ACTION]` in het logboek). De functie accepteert via `ValidateSet` geen andere servicenamen.
-- **Alleen lokaal.** Geen PowerShell Remoting, WinRM, `Invoke-Command` naar andere hosts, centrale databases, Azure-API's of
-  verplichte internetverbinding. `build.ps1` faalt als dergelijke constructies in de broncode verschijnen.
-- **Geen telemetrie, geen automatische uploads, geen dynamisch gedownloade code.**
-- **Geen ExecutionPolicy-bypass** in de applicatie. Achtergrond-runspaces gebruiken de effectieve ExecutionPolicy van het proces.
-- **Geen geheimen.** Er worden geen wachtwoorden, tokens of inloggegevens gelezen, opgeslagen of gelogd. De repository bevat er geen;
-  `.gitignore` sluit gangbare geheimbestanden (`.env`, `*.pfx`, `*token*`, …) en runtime-artefacten (logs, exports, lokale config) uit.
+- **Read-only by default.** No registry values are changed, no containers are detached, no VHDs are repaired and no profiles
+  are deleted. The health check does not run `DISM /RestoreHealth`, `sfc /scannow` or `chkdsk /f`.
+- **Management actions** are limited to start/stop/restart of the services `frxsvc` and `frxccds`. They are clearly marked, ask for
+  explicit confirmation (default button *No*, extra warning for stop/restart), run locally and are logged
+  (`[ACTION]` in the log file). The function accepts no other service names (`ValidateSet`).
+- **Local only.** No PowerShell Remoting, WinRM, `Invoke-Command` to other hosts, central databases, Azure APIs or
+  mandatory internet connection. `build.ps1` fails when such constructs appear in the source.
+- **No telemetry, no automatic uploads, no dynamically downloaded code.**
+- **No ExecutionPolicy bypass** in the application. Background runspaces use the effective ExecutionPolicy of the process.
+- **No secrets.** No passwords, tokens or credentials are read, stored or logged. The repository contains none;
+  `.gitignore` excludes common secret files (`.env`, `*.pfx`, `*token*`, …) and runtime artefacts (logs, exports, local config).
 
-## Administratorrechten
+## Administrator rights
 
-`fsl-master.exe` heeft het manifest `requestedExecutionLevel level="requireAdministrator"`. Bij een niet-verhoogde start (bijvoorbeeld
-vanuit broncode) toont de applicatie een melding en biedt aan opnieuw verhoogd te starten; de niet-verhoogde instantie sluit af.
-De schakelaar `-AllowNonElevated` is uitsluitend bedoeld voor ontwikkeling/tests.
+`fsl-master.exe` has the manifest `requestedExecutionLevel level="requireAdministrator"`. When started non-elevated (for example
+from source) the application shows a message and offers to restart elevated; the non-elevated instance exits.
+The `-AllowNonElevated` switch is only meant for development/tests.
 
-## Invoer en uitvoer
+## Input and output
 
-- **HTML:** alle waarden worden met `[System.Net.WebUtility]::HtmlEncode` geëscaped (`ConvertTo-FslHtmlEncoded`); getest met
-  markup in gegevens.
-- **Exportpaden** (`Test-FslExportPath`): volledig pad vereist, ongeldige tekens en wildcards geweigerd, verwachte extensie afgedwongen,
-  doelmap moet bestaan, exporteren naar de Windows-map is niet toegestaan.
-- **Configuratiebestand:** ongeldige JSON of waarden vallen terug op veilige standaarden (getest); getallen worden gevalideerd en begrensd.
-- **Sanitized report:** maskeert gebruikersnamen, SID's, servernamen, hostnaam, domeinnamen en UNC-paden consistent
-  (`User01`, `SID-01`, `SERVER01`, `\\SERVER01\SHARE01`). Controleer het resultaat altijd voordat u het buiten uw organisatie deelt;
-  vrije tekst in eventberichten kan andere gevoelige gegevens bevatten die niet als zodanig herkend worden.
+- **HTML:** all values are escaped with `[System.Net.WebUtility]::HtmlEncode` (`ConvertTo-FslHtmlEncoded`); tested with
+  markup in data.
+- **Export paths** (`Test-FslExportPath`): full path required, invalid characters and wildcards rejected, expected extension enforced,
+  the target folder must exist, exporting to the Windows folder is not allowed.
+- **Configuration file:** invalid JSON or values fall back to safe defaults (tested); numbers are validated and bounded.
+- **Sanitized report:** consistently masks user names, SIDs, server names, host name, domain names and UNC paths
+  (`User01`, `SID-01`, `SERVER01`, `\\SERVER01\SHARE01`). Always review the result before sharing it outside your organisation;
+  free text in event messages may contain other sensitive data that is not recognised as such.
 
 ## Logging
 
-Logbestand: `%ProgramData%\FSL-Master\Logs\fsl-master-<yyyyMMdd>.log` (terugval `%TEMP%\FSL-Master\Logs`). Bevat applicatiestart en
--versie, administratorstatus, refreshes, databronfouten, time-outs, exports, serviceacties en onverwachte exceptions. Bevat geen
-inloggegevens. Logbestanden worden niet automatisch verwijderd of verzonden.
+Log file: `%ProgramData%\FSL-Master\Logs\fsl-master-<yyyyMMdd>.log` (fallback `%TEMP%\FSL-Master\Logs`). Contains application start and
+version, administrator status, refreshes, data source errors, timeouts, exports, service actions and unexpected exceptions. Contains no
+credentials. Log files are not deleted or sent automatically.
 
-## Bekende risico's
+## Known risks
 
-- De exe is niet ondertekend; onderteken hem in beheerde omgevingen (zie [building.md](building.md)).
-- PS2EXE-executables worden door sommige antivirusproducten als vals-positief gemeld of door beleid geblokkeerd.
-- Het logboek en exports kunnen gebruikersnamen en paden bevatten; bescherm de mappen met passende NTFS-rechten.
+- The exe is not signed; sign it in managed environments (see [building.md](building.md)).
+- PS2EXE executables are flagged as false positives by some antivirus products or blocked by policy.
+- The log file and exports may contain user names and paths; protect the folders with appropriate NTFS permissions.

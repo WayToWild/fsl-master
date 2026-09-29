@@ -80,7 +80,7 @@ Describe 'FSLogix installation and frx.exe detection' {
             Mock Get-CimInstance { @() }
             Mock Get-Process { @() }
             $rows = Get-FslServiceInfo -Install ([pscustomobject]@{ Installed = $false; InstallDir = $null }) -ConfigLookup @{}
-            @($rows | Where-Object { $_.Kind -eq 'Installatie' }).Count | Should Be 1
+            @($rows | Where-Object { $_.Kind -eq 'Installation' }).Count | Should Be 1
             (@($rows | Where-Object { $_.Name -eq 'frxsvc' })[0]).Status | Should Be 'NA'
         }
     }
@@ -133,7 +133,7 @@ Describe 'Registry reading and policy priority' {
             $c = Get-FslConfiguration
             $c.Rows.Count | Should BeGreaterThan 10
             (@($c.Rows | Where-Object { $_.Name -eq 'Enabled' -and $_.Scope -eq 'Profiles' })[0]).Status | Should Be 'Warning'
-            (@($c.Rows | Where-Object { $_.Name -eq 'VolumeType' })[0]).Default | Should Be 'Onbekend'
+            (@($c.Rows | Where-Object { $_.Name -eq 'VolumeType' })[0]).Default | Should Be 'Unknown'
         }
     }
 }
@@ -202,7 +202,7 @@ Describe 'quser output parsing' {
             $r = @(ConvertFrom-FslQuserOutput -Lines $lines)
             $r.Count | Should Be 1
             $r[0].User | Should Be 'rick'
-            $r[0].State | Should Be 'Actief'
+            $r[0].State | Should Be 'Actief'   # localized state text is passed through unchanged
         }
     }
     Context 'ctx' {
@@ -215,7 +215,7 @@ Describe 'quser output parsing' {
             $s = @([pscustomobject]@{ User = 'jdoe'; Sid = 'S-1-5-21-1-2-3-4'; Status = 'OK'; StatusText = ''; Glyph = ''; ContainerMounted = ''; ContainerType = ''; ContainerPath = ''; VhdFile = ''; ContainerStatus = '' })
             $c = @([pscustomobject]@{ Sid = 'S-1-5-21-1-2-3-4'; User = 'CONTOSO\jdoe'; RedirectType = 'Profile'; ContainerPath = '\\fs\p\a.vhdx'; VhdFile = 'a.vhdx'; Status = 'OK' })
             $r = Merge-FslSessionContainers -Sessions $s -Containers $c -FslogixInstalled $true -ProfilesEnabled $true -ContainerDataAvailable $true
-            $r[0].ContainerMounted | Should Be 'Ja'
+            $r[0].ContainerMounted | Should Be 'Yes'
             $r[0].VhdFile | Should Be 'a.vhdx'
         }
     }
@@ -223,7 +223,7 @@ Describe 'quser output parsing' {
         It 'marks containers unknown when FSLogix is not installed' {
             $s = @([pscustomobject]@{ User = 'jdoe'; Sid = 'S-1-5-21-1-2-3-4'; Status = 'OK'; StatusText = ''; Glyph = ''; ContainerMounted = ''; ContainerType = ''; ContainerPath = ''; VhdFile = ''; ContainerStatus = '' })
             $r = Merge-FslSessionContainers -Sessions $s -Containers @() -FslogixInstalled $false -ProfilesEnabled $false -ContainerDataAvailable $false
-            $r[0].ContainerMounted | Should Be 'Onbekend'
+            $r[0].ContainerMounted | Should Be 'Unknown'
         }
     }
 }
@@ -397,8 +397,8 @@ Describe 'Sanitizing' {
 
 Describe 'Export' {
     $rows = @(
-        [pscustomobject]@{ User = 'jdoe'; Note = '<b>hi</b>'; Status = 'OK'; StatusText = 'Gezond' },
-        [pscustomobject]@{ User = 'asmith'; Note = 'a,b'; Status = 'Error'; StatusText = 'Fout' })
+        [pscustomobject]@{ User = 'jdoe'; Note = '<b>hi</b>'; Status = 'OK'; StatusText = 'Healthy' },
+        [pscustomobject]@{ User = 'asmith'; Note = 'a,b'; Status = 'Error'; StatusText = 'Error' })
     Context 'ctx' {
         It 'exports CSV' {
             $p = Join-Path $TestDrive 'a.csv'
@@ -542,7 +542,7 @@ Describe 'Health checks and collection with FSLogix absent' {
             }
             $cfg = Get-FslDefaultConfig; $cfg.NetworkTimeoutMs = 1000
             $r = @(Get-FslHealthChecks -Data $data -Config $cfg)
-            (@($r | Where-Object { $_.Category -eq 'Netwerk' -and $_.Status -in 'Warning', 'Error' }).Count) | Should BeGreaterThan 0
+            (@($r | Where-Object { $_.Category -eq 'Network' -and $_.Status -in 'Warning', 'Error' }).Count) | Should BeGreaterThan 0
         }
     }
 }
@@ -576,7 +576,7 @@ Describe 'Containers with FSLogix present (mocked)' {
             Mock Get-FslAccountForSid { 'CONTOSO\jdoe' }
             Mock Test-FslTcpPort { 'Timeout' }
             $r = Get-FslContainers -Install ([pscustomobject]@{ FrxPath = 'C:\frx.exe' })
-            $r.Rows[0].Network | Should Be 'Time-out'
+            $r.Rows[0].Network | Should Be 'Timeout'
             $r.Rows[0].Status | Should Be 'Warning'
         }
     }
@@ -607,10 +607,10 @@ Describe 'Health checks with FSLogix present' {
             $mkSvc = { param($state, $st) @([pscustomobject]@{ Kind = 'Service'; Name = 'frxsvc'; State = $state; StartMode = 'Auto'; Status = $st }, [pscustomobject]@{ Kind = 'Driver'; Name = 'frxdrv'; State = 'Running'; StartMode = 'System'; Status = 'OK' }) }
             $base = @{ Install = [pscustomobject]@{ Installed = $true; Version = '2.9'; InstallDir = 'C:\x' }; Config = [pscustomobject]@{ Rows = @(); Lookup = $lookup; Groups = @() }; Sessions = @(); Containers = $null; Events = $null; Volumes = @(); System = $null }
             $ok = @(Get-FslHealthChecks -Data ($base + @{ Services = (& $mkSvc 'Running' 'OK') }) -Config (Get-FslDefaultConfig))
-            ($ok | Where-Object { $_.Check -eq 'Service frxsvc actief' }).Status | Should Be 'OK'
-            ($ok | Where-Object { $_.Check -eq 'Profile Containers ingeschakeld' }).Status | Should Be 'OK'
+            ($ok | Where-Object { $_.Check -eq 'Service frxsvc running' }).Status | Should Be 'OK'
+            ($ok | Where-Object { $_.Check -eq 'Profile Containers enabled' }).Status | Should Be 'OK'
             $bad = @(Get-FslHealthChecks -Data ($base + @{ Services = (& $mkSvc 'Stopped' 'Error') }) -Config (Get-FslDefaultConfig))
-            $svc = $bad | Where-Object { $_.Check -eq 'Service frxsvc actief' }
+            $svc = $bad | Where-Object { $_.Check -eq 'Service frxsvc running' }
             $svc.Status | Should Be 'Error'
             $svc.Weight | Should Be 2
             (Get-FslHealthScore -Results $bad).Status | Should Be 'Error'

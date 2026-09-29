@@ -21,7 +21,7 @@ function ConvertTo-FslEventRow {
     $msg = $null
     try { $msg = $Event.Message } catch { }
     if ([string]::IsNullOrEmpty($msg)) {
-        try { $msg = '(bericht niet beschikbaar) ' + (($Event.Properties | ForEach-Object { "$($_.Value)" }) -join ' | ') } catch { $msg = '(bericht niet beschikbaar)' }
+        try { $msg = '(message not available) ' + (($Event.Properties | ForEach-Object { "$($_.Value)" }) -join ' | ') } catch { $msg = '(message not available)' }
     }
     $level = if ($Event.LevelDisplayName) { $Event.LevelDisplayName } else { switch ($Event.Level) { 1 { 'Critical' } 2 { 'Error' } 3 { 'Warning' } 4 { 'Information' } 5 { 'Verbose' } default { 'LogAlways' } } }
     $corr = ''
@@ -33,7 +33,7 @@ function ConvertTo-FslEventRow {
         Time = $Event.TimeCreated; LogName = $Event.LogName; Provider = $Event.ProviderName; EventId = [int]$Event.Id
         Level = $level; LevelNumber = [int]$Event.Level; User = (Get-FslEventUserName -Sid $Event.UserId -Cache $UserCache)
         Summary = $summary; Message = $msg; Correlation = $corr; Marked = [bool]($MarkedIds -contains [int]$Event.Id)
-        MarkedText = $(if ($MarkedIds -contains [int]$Event.Id) { 'Ja' } else { '' })
+        MarkedText = $(if ($MarkedIds -contains [int]$Event.Id) { 'Yes' } else { '' })
         Status = $status; StatusText = (Get-FslStatusText $status); Glyph = (Get-FslStatusGlyph $status)
     }
 }

@@ -6,7 +6,7 @@ function Get-FslAppInfo {
     [pscustomobject]@{
         Name        = 'FSL Master'
         Description = 'Local FSLogix diagnostics and monitoring for Azure Virtual Desktop'
-        Version     = '0.1.0'
+        Version     = '0.1.1'
         License     = 'MIT'
         RepoUrl     = 'https://github.com/WayToWild/fsl-master'
     }
@@ -15,11 +15,11 @@ function Get-FslAppInfo {
 function Get-FslStatusText {
     param([string]$Status)
     switch ($Status) {
-        'OK'      { 'Gezond' }
-        'Warning' { 'Waarschuwing' }
-        'Error'   { 'Fout' }
-        'NA'      { 'N.v.t.' }
-        default   { 'Onbekend' }
+        'OK'      { 'Healthy' }
+        'Warning' { 'Warning' }
+        'Error'   { 'Error' }
+        'NA'      { 'N/A' }
+        default   { 'Unknown' }
     }
 }
 
@@ -134,7 +134,7 @@ function Get-FslConfig {
                 }
             }
             break
-        } catch { Write-FslLog -Level WARN -Message "Configuratiebestand '$p' kon niet worden gelezen." -Exception $_ }
+        } catch { Write-FslLog -Level WARN -Message "Configuration file '$p' could not be read." -Exception $_ }
     }
     $ids = @()
     foreach ($i in @($cfg.MarkedEventIds)) { $n = 0; if ([int]::TryParse("$i", [ref]$n) -and $n -gt 0) { $ids += $n } }
@@ -191,8 +191,8 @@ function Format-FslBytes {
 
 function Format-FslTimeSpan {
     param([timespan]$Span)
-    if ($Span.TotalDays -ge 1) { return ('{0}d {1}u {2}m' -f [int]$Span.Days, $Span.Hours, $Span.Minutes) }
-    ('{0}u {1}m' -f [int][math]::Floor($Span.TotalHours), $Span.Minutes)
+    if ($Span.TotalDays -ge 1) { return ('{0}d {1}h {2}m' -f [int]$Span.Days, $Span.Hours, $Span.Minutes) }
+    ('{0}h {1}m' -f [int][math]::Floor($Span.TotalHours), $Span.Minutes)
 }
 
 function Format-FslValue {
@@ -221,7 +221,7 @@ function Invoke-FslWithTimeout {
         } finally { $ps.Dispose() }
     }
     try { $null = $ps.BeginStop($null, $null) } catch { }
-    [pscustomobject]@{ TimedOut = $true; Result = @(); Error = 'Time-out' }
+    [pscustomobject]@{ TimedOut = $true; Result = @(); Error = 'Timeout' }
 }
 
 function Test-FslPathReachable {
@@ -274,20 +274,20 @@ function Test-FslExportPath {
     # Returns @{ Valid; Reason; Path }
     param([string]$Path, [string[]]$AllowedExtensions = @())
     $fail = { param($m) [pscustomobject]@{ Valid = $false; Reason = $m; Path = $Path } }
-    if ([string]::IsNullOrWhiteSpace($Path)) { return (& $fail 'Geen pad opgegeven.') }
-    if ($Path.IndexOfAny([IO.Path]::GetInvalidPathChars()) -ge 0 -or $Path -match '[\*\?<>|"]') { return (& $fail 'Het pad bevat ongeldige tekens.') }
-    try { $full = [IO.Path]::GetFullPath($Path) } catch { return (& $fail 'Het pad is ongeldig.') }
-    if (-not [IO.Path]::IsPathRooted($Path)) { return (& $fail 'Gebruik een volledig pad.') }
+    if ([string]::IsNullOrWhiteSpace($Path)) { return (& $fail 'No path specified.') }
+    if ($Path.IndexOfAny([IO.Path]::GetInvalidPathChars()) -ge 0 -or $Path -match '[\*\?<>|"]') { return (& $fail 'The path contains invalid characters.') }
+    try { $full = [IO.Path]::GetFullPath($Path) } catch { return (& $fail 'The path is not valid.') }
+    if (-not [IO.Path]::IsPathRooted($Path)) { return (& $fail 'Use a full path.') }
     $name = [IO.Path]::GetFileName($full)
-    if ([string]::IsNullOrEmpty($name)) { return (& $fail 'Geen bestandsnaam opgegeven.') }
+    if ([string]::IsNullOrEmpty($name)) { return (& $fail 'No file name specified.') }
     $win = $env:SystemRoot
-    if ($win -and $full.StartsWith($win + '\', [StringComparison]::OrdinalIgnoreCase)) { return (& $fail 'Exporteren naar de Windows-map is niet toegestaan.') }
+    if ($win -and $full.StartsWith($win + '\', [StringComparison]::OrdinalIgnoreCase)) { return (& $fail 'Exporting to the Windows folder is not allowed.') }
     if ($AllowedExtensions.Count -gt 0) {
         $ext = [IO.Path]::GetExtension($full).ToLowerInvariant()
-        if ($AllowedExtensions -notcontains $ext) { return (& $fail ("Extensie '$ext' is niet toegestaan (toegestaan: " + ($AllowedExtensions -join ', ') + ').')) }
+        if ($AllowedExtensions -notcontains $ext) { return (& $fail ("Extension '$ext' is not allowed (allowed: " + ($AllowedExtensions -join ', ') + ').')) }
     }
     $dir = [IO.Path]::GetDirectoryName($full)
-    if (-not (Test-Path -LiteralPath $dir -PathType Container)) { return (& $fail "De map '$dir' bestaat niet.") }
+    if (-not (Test-Path -LiteralPath $dir -PathType Container)) { return (& $fail "The folder '$dir' does not exist.") }
     [pscustomobject]@{ Valid = $true; Reason = ''; Path = $full }
 }
 

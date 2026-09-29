@@ -65,7 +65,7 @@ function Get-FslPendingReboot {
     if ($pfr -and @($pfr.Value | Where-Object { $_ }).Count -gt 0) { $reasons.Add('PendingFileRenameOperations') }
     $a = Get-FslRegistryValue -Path 'HKLM:\SYSTEM\CurrentControlSet\Control\ComputerName\ActiveComputerName' -Name 'ComputerName'
     $p = Get-FslRegistryValue -Path 'HKLM:\SYSTEM\CurrentControlSet\Control\ComputerName\ComputerName' -Name 'ComputerName'
-    if ($a -and $p -and "$($a.Value)" -ne "$($p.Value)") { $reasons.Add('Computernaam wijziging in afwachting') }
+    if ($a -and $p -and "$($a.Value)" -ne "$($p.Value)") { $reasons.Add('Computer rename pending') }
     [pscustomobject]@{ Pending = ($reasons.Count -gt 0); Reasons = @($reasons) }
 }
 

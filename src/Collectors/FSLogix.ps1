@@ -65,19 +65,19 @@ function Get-FslServiceInfo {
         $s = $svcInfo[$name]
         $status = 'Unknown'; $note = ''
         if (-not $s) {
-            if ($installed) { $status = 'Error'; $note = 'Service niet gevonden terwijl FSLogix lijkt te zijn geïnstalleerd.' } else { $status = 'NA'; $note = 'FSLogix niet geïnstalleerd.' }
-        } elseif ($s.StartMode -eq 'Disabled') { $status = 'Warning'; $note = 'Service is uitgeschakeld.' }
-        elseif ($s.State -eq 'Running') { $status = 'OK'; $note = 'Actief.' }
+            if ($installed) { $status = 'Error'; $note = 'Service not found although FSLogix appears to be installed.' } else { $status = 'NA'; $note = 'FSLogix not installed.' }
+        } elseif ($s.StartMode -eq 'Disabled') { $status = 'Warning'; $note = 'Service is disabled.' }
+        elseif ($s.State -eq 'Running') { $status = 'OK'; $note = 'Running.' }
         elseif ($name -eq 'frxccds') {
-            if ($cloudCache) { $status = 'Error'; $note = 'Cloud Cache is geconfigureerd maar de service draait niet.' } else { $status = 'NA'; $note = 'Alleen nodig bij Cloud Cache.' }
-        } else { $status = 'Error'; $note = 'Service draait niet.' }
+            if ($cloudCache) { $status = 'Error'; $note = 'Cloud Cache is configured but the service is not running.' } else { $status = 'NA'; $note = 'Only needed with Cloud Cache.' }
+        } else { $status = 'Error'; $note = 'Service is not running.' }
         $path = $null; $ver = $null
         if ($s -and $s.PathName) {
             $path = ($s.PathName -replace '^"([^"]+)".*$', '$1')
             $ver = Get-FslFileVersion $path
         }
         $rows.Add([pscustomobject]@{
-            Kind = 'Service'; Name = $name; DisplayName = $(if ($s) { $s.DisplayName } else { '' }); State = $(if ($s) { $s.State } else { 'Niet aanwezig' })
+            Kind = 'Service'; Name = $name; DisplayName = $(if ($s) { $s.DisplayName } else { '' }); State = $(if ($s) { $s.State } else { 'Not present' })
             StartMode = $(if ($s) { $s.StartMode } else { '' }); Version = $ver; Path = $path
             Process = $(if ($procs.ContainsKey($name)) { "PID $($procs[$name].Id)" } else { '' })
             Status = $status; StatusText = (Get-FslStatusText $status); Glyph = (Get-FslStatusGlyph $status); Note = $note
@@ -87,13 +87,13 @@ function Get-FslServiceInfo {
         $d = $drvInfo[$name]
         $status = 'Unknown'; $note = ''
         if (-not $d) {
-            if ($installed -and $name -ne 'frxdrvlt') { $status = 'Warning'; $note = 'Driver niet gevonden.' } else { $status = 'NA'; $note = 'Niet aanwezig (niet altijd vereist).' }
-        } elseif ($d.State -eq 'Running') { $status = 'OK'; $note = 'Geladen.' }
-        else { $status = 'Warning'; $note = "Driverstatus: $($d.State)." }
+            if ($installed -and $name -ne 'frxdrvlt') { $status = 'Warning'; $note = 'Driver not found.' } else { $status = 'NA'; $note = 'Not present (not always required).' }
+        } elseif ($d.State -eq 'Running') { $status = 'OK'; $note = 'Loaded.' }
+        else { $status = 'Warning'; $note = "Driver status: $($d.State)." }
         $path = $null; $ver = $null
         if ($d -and $d.PathName) { $path = ($d.PathName -replace '^\\\?\?\\', '' -replace '^\\SystemRoot', $env:SystemRoot); $ver = Get-FslFileVersion $path }
         $rows.Add([pscustomobject]@{
-            Kind = 'Driver'; Name = $name; DisplayName = $(if ($d) { $d.DisplayName } else { '' }); State = $(if ($d) { $d.State } else { 'Niet aanwezig' })
+            Kind = 'Driver'; Name = $name; DisplayName = $(if ($d) { $d.DisplayName } else { '' }); State = $(if ($d) { $d.State } else { 'Not present' })
             StartMode = $(if ($d) { $d.StartMode } else { '' }); Version = $ver; Path = $path; Process = ''
             Status = $status; StatusText = (Get-FslStatusText $status); Glyph = (Get-FslStatusGlyph $status); Note = $note
         })
@@ -103,7 +103,7 @@ function Get-FslServiceInfo {
             $p = Join-Path $Install.InstallDir $bin
             if (Test-Path -LiteralPath $p -PathType Leaf) {
                 $rows.Add([pscustomobject]@{
-                    Kind = 'Binary'; Name = $bin; DisplayName = ''; State = 'Aanwezig'; StartMode = ''; Version = (Get-FslFileVersion $p); Path = $p; Process = ''
+                    Kind = 'Binary'; Name = $bin; DisplayName = ''; State = 'Present'; StartMode = ''; Version = (Get-FslFileVersion $p); Path = $p; Process = ''
                     Status = 'OK'; StatusText = (Get-FslStatusText 'OK'); Glyph = (Get-FslStatusGlyph 'OK'); Note = ''
                 })
             }
@@ -111,8 +111,8 @@ function Get-FslServiceInfo {
     }
     if (-not $installed) {
         $rows.Add([pscustomobject]@{
-            Kind = 'Installatie'; Name = 'FSLogix'; DisplayName = ''; State = 'Niet geïnstalleerd'; StartMode = ''; Version = ''; Path = ''; Process = ''
-            Status = 'NA'; StatusText = (Get-FslStatusText 'NA'); Glyph = (Get-FslStatusGlyph 'NA'); Note = 'FSLogix Apps is niet gevonden op deze host.'
+            Kind = 'Installation'; Name = 'FSLogix'; DisplayName = ''; State = 'Not installed'; StartMode = ''; Version = ''; Path = ''; Process = ''
+            Status = 'NA'; StatusText = (Get-FslStatusText 'NA'); Glyph = (Get-FslStatusGlyph 'NA'); Note = 'FSLogix Apps was not found on this host.'
         })
     }
     $rows.ToArray()
@@ -121,7 +121,7 @@ function Get-FslServiceInfo {
 function Invoke-FslServiceAction {
     # Local management action. Only the two FSLogix services are allowed. Caller must already have asked for confirmation.
     param([ValidateSet('frxsvc', 'frxccds')][string]$Name, [ValidateSet('Start', 'Stop', 'Restart')][string]$Action)
-    Write-FslLog -Level ACTION -Message "Serviceactie gestart: $Action $Name"
+    Write-FslLog -Level ACTION -Message "Service action started: $Action $Name"
     try {
         $svc = Get-Service -Name $Name -ErrorAction Stop
         switch ($Action) {
@@ -130,10 +130,10 @@ function Invoke-FslServiceAction {
             'Restart' { Restart-Service -Name $Name -Force -ErrorAction Stop }
         }
         $svc.Refresh()
-        Write-FslLog -Level ACTION -Message "Serviceactie voltooid: $Action $Name -> $($svc.Status)"
-        return [pscustomobject]@{ Success = $true; Message = "$Action $Name voltooid (status: $($svc.Status))." }
+        Write-FslLog -Level ACTION -Message "Service action completed: $Action $Name -> $($svc.Status)"
+        return [pscustomobject]@{ Success = $true; Message = "$Action $Name completed (status: $($svc.Status))." }
     } catch {
-        Write-FslLog -Level ERROR -Message "Serviceactie mislukt: $Action $Name" -Exception $_
+        Write-FslLog -Level ERROR -Message "Service action failed: $Action $Name" -Exception $_
         return [pscustomobject]@{ Success = $false; Message = $_.Exception.Message }
     }
 }
@@ -143,44 +143,44 @@ function Get-FslSettingDefinitions {
     # Default = documented Microsoft default; $null means "unknown / not reliably documented" and is shown as such.
     $d = New-Object System.Collections.Generic.List[hashtable]
     $add = { param($scope, $name, $desc, $default) $d.Add(@{ Scope = $scope; Name = $name; Description = $desc; Default = $default }) }
-    & $add 'Profiles' 'Enabled' 'Schakelt FSLogix Profile Containers in (1) of uit (0).' 0
-    & $add 'Profiles' 'VHDLocations' 'SMB-locatie(s) waar de profiel-VHD(X) wordt opgeslagen.' $null
-    & $add 'Profiles' 'CCDLocations' 'Cloud Cache-providers (type=smb/azure,connectionString=...).' $null
-    & $add 'Profiles' 'ProfileType' '0 = normaal, 1 = RW/RO, 2 = RO/RW, 3 = alleen-lezen.' 0
-    & $add 'Profiles' 'VolumeType' 'Containerformaat: VHD of VHDX.' $null
-    & $add 'Profiles' 'SizeInMBs' 'Maximale grootte van de container in MB.' 30000
-    & $add 'Profiles' 'IsDynamic' '1 = dynamisch groeiend bestand, 0 = vaste grootte.' 1
-    & $add 'Profiles' 'DeleteLocalProfileWhenVHDShouldApply' 'Verwijdert een bestaand lokaal profiel als een container moet worden toegepast.' 0
-    & $add 'Profiles' 'FlipFlopProfileDirectoryName' 'Mapnaam met <gebruikersnaam>_<SID> in plaats van <SID>_<gebruikersnaam>.' 0
-    & $add 'Profiles' 'PreventLoginWithFailure' 'Blokkeert aanmelden als het koppelen van de container mislukt.' 0
-    & $add 'Profiles' 'PreventLoginWithTempProfile' 'Blokkeert aanmelden als Windows een tijdelijk profiel zou aanmaken.' 0
-    & $add 'Profiles' 'LockedRetryCount' 'Aantal pogingen als de container vergrendeld is.' 12
-    & $add 'Profiles' 'LockedRetryInterval' 'Seconden tussen pogingen bij een vergrendelde container.' 5
-    & $add 'Profiles' 'ReAttachIntervalSeconds' 'Seconden tussen pogingen om een verbroken container opnieuw te koppelen.' 10
-    & $add 'Profiles' 'ReAttachRetryCount' 'Aantal pogingen om een verbroken container opnieuw te koppelen.' 60
-    & $add 'Profiles' 'RoamIdentity' 'Roamt Windows-referenties (Credential Manager) in de container.' 0
-    & $add 'Profiles' 'IncludeOfficeActivation' 'Neemt Office-activatiegegevens op in de container.' 0
-    & $add 'Profiles' 'AccessNetworkAsComputerObject' 'Benadert de share als computeraccount in plaats van als gebruiker.' $null
-    & $add 'Profiles' 'ConcurrentUserSessions' 'Staat meerdere gelijktijdige sessies van een gebruiker toe.' $null
-    & $add 'Profiles' 'RedirXMLSourceFolder' 'Map met redirections.xml.' $null
-    & $add 'Profiles' 'ClearCacheOnLogoff' 'Cloud Cache: wist de lokale cache bij afmelden.' $null
-    & $add 'Profiles' 'HealthyProvidersRequiredForRegister' 'Cloud Cache: aantal gezonde providers om te registreren.' $null
-    & $add 'Profiles' 'HealthyProvidersRequiredForUnregister' 'Cloud Cache: aantal gezonde providers om af te melden.' $null
-    & $add 'ODFC' 'Enabled' 'Schakelt Office Data File Containers (ODFC) in (1) of uit (0).' 0
-    & $add 'ODFC' 'VHDLocations' 'SMB-locatie(s) voor de Office-container.' $null
-    & $add 'ODFC' 'CCDLocations' 'Cloud Cache-providers voor de Office-container.' $null
-    & $add 'ODFC' 'VolumeType' 'Containerformaat: VHD of VHDX.' $null
-    & $add 'ODFC' 'SizeInMBs' 'Maximale grootte van de Office-container in MB.' $null
-    & $add 'ODFC' 'IsDynamic' '1 = dynamisch groeiend bestand.' $null
-    & $add 'ODFC' 'FlipFlopProfileDirectoryName' 'Mapnaam met <gebruikersnaam>_<SID>.' $null
-    & $add 'ODFC' 'IncludeOfficeActivation' 'Neemt Office-activatiegegevens op.' $null
-    & $add 'ODFC' 'IncludeOneDrive' 'Neemt OneDrive-cache op.' $null
-    & $add 'ODFC' 'IncludeOneNote' 'Neemt OneNote-gegevens op.' $null
-    & $add 'ODFC' 'IncludeOutlook' 'Neemt Outlook-gegevens (OST) op.' $null
-    & $add 'ODFC' 'IncludeOutlookPersonalization' 'Neemt Outlook-personalisatie op.' $null
-    & $add 'ODFC' 'IncludeSharepoint' 'Neemt SharePoint-cache op.' $null
-    & $add 'ODFC' 'IncludeSkype' 'Neemt Skype for Business-gegevens op.' $null
-    & $add 'ODFC' 'IncludeTeams' 'Neemt Teams-gegevens op.' $null
+    & $add 'Profiles' 'Enabled' 'Enables (1) or disables (0) FSLogix Profile Containers.' 0
+    & $add 'Profiles' 'VHDLocations' 'SMB location(s) where the profile VHD(X) is stored.' $null
+    & $add 'Profiles' 'CCDLocations' 'Cloud Cache providers (type=smb/azure,connectionString=...).' $null
+    & $add 'Profiles' 'ProfileType' '0 = normal, 1 = RW/RO, 2 = RO/RW, 3 = read-only.' 0
+    & $add 'Profiles' 'VolumeType' 'Container format: VHD or VHDX.' $null
+    & $add 'Profiles' 'SizeInMBs' 'Maximum size of the container in MB.' 30000
+    & $add 'Profiles' 'IsDynamic' '1 = dynamically expanding file, 0 = fixed size.' 1
+    & $add 'Profiles' 'DeleteLocalProfileWhenVHDShouldApply' 'Deletes an existing local profile when a container should apply.' 0
+    & $add 'Profiles' 'FlipFlopProfileDirectoryName' 'Folder name <username>_<SID> instead of <SID>_<username>.' 0
+    & $add 'Profiles' 'PreventLoginWithFailure' 'Blocks sign-in when attaching the container fails.' 0
+    & $add 'Profiles' 'PreventLoginWithTempProfile' 'Blocks sign-in when Windows would create a temporary profile.' 0
+    & $add 'Profiles' 'LockedRetryCount' 'Number of retries when the container is locked.' 12
+    & $add 'Profiles' 'LockedRetryInterval' 'Seconds between retries for a locked container.' 5
+    & $add 'Profiles' 'ReAttachIntervalSeconds' 'Seconds between attempts to re-attach a disconnected container.' 10
+    & $add 'Profiles' 'ReAttachRetryCount' 'Number of attempts to re-attach a disconnected container.' 60
+    & $add 'Profiles' 'RoamIdentity' 'Roams Windows credentials (Credential Manager) in the container.' 0
+    & $add 'Profiles' 'IncludeOfficeActivation' 'Includes Office activation data in the container.' 0
+    & $add 'Profiles' 'AccessNetworkAsComputerObject' 'Accesses the share as the computer account instead of as the user.' $null
+    & $add 'Profiles' 'ConcurrentUserSessions' 'Allows multiple concurrent sessions per user.' $null
+    & $add 'Profiles' 'RedirXMLSourceFolder' 'Folder containing redirections.xml.' $null
+    & $add 'Profiles' 'ClearCacheOnLogoff' 'Cloud Cache: clears the local cache at sign-out.' $null
+    & $add 'Profiles' 'HealthyProvidersRequiredForRegister' 'Cloud Cache: number of healthy providers required to register.' $null
+    & $add 'Profiles' 'HealthyProvidersRequiredForUnregister' 'Cloud Cache: number of healthy providers required to unregister.' $null
+    & $add 'ODFC' 'Enabled' 'Enables (1) or disables (0) Office Data File Containers (ODFC).' 0
+    & $add 'ODFC' 'VHDLocations' 'SMB location(s) for the Office container.' $null
+    & $add 'ODFC' 'CCDLocations' 'Cloud Cache providers for the Office container.' $null
+    & $add 'ODFC' 'VolumeType' 'Container format: VHD or VHDX.' $null
+    & $add 'ODFC' 'SizeInMBs' 'Maximum size of the Office container in MB.' $null
+    & $add 'ODFC' 'IsDynamic' '1 = dynamically expanding file.' $null
+    & $add 'ODFC' 'FlipFlopProfileDirectoryName' 'Folder name <username>_<SID>.' $null
+    & $add 'ODFC' 'IncludeOfficeActivation' 'Includes Office activation data.' $null
+    & $add 'ODFC' 'IncludeOneDrive' 'Includes the OneDrive cache.' $null
+    & $add 'ODFC' 'IncludeOneNote' 'Includes OneNote data.' $null
+    & $add 'ODFC' 'IncludeOutlook' 'Includes Outlook data (OST).' $null
+    & $add 'ODFC' 'IncludeOutlookPersonalization' 'Includes Outlook personalization.' $null
+    & $add 'ODFC' 'IncludeSharepoint' 'Includes the SharePoint cache.' $null
+    & $add 'ODFC' 'IncludeSkype' 'Includes Skype for Business data.' $null
+    & $add 'ODFC' 'IncludeTeams' 'Includes Teams data.' $null
     , $d.ToArray()
 }
 
@@ -194,7 +194,7 @@ function Get-FslEffectiveSetting {
     $source = 'NotConfigured'; $val = $null; $path = $locPath
     if ($pol) { $source = 'Policy'; $val = $pol.Value; $path = $polPath }
     elseif ($loc) { $source = 'Local'; $val = $loc.Value; $path = $locPath }
-    $srcText = switch ($source) { 'Policy' { 'Via policy' } 'Local' { 'Lokaal' } default { 'Niet geconfigureerd' } }
+    $srcText = switch ($source) { 'Policy' { 'Via policy' } 'Local' { 'Local' } default { 'Not configured' } }
     [pscustomobject]@{
         Scope = $Scope; Name = $Name; Source = $source; SourceText = $srcText; Value = $val; Path = $path
         PolicyValue = $(if ($pol) { $pol.Value } else { $null }); LocalValue = $(if ($loc) { $loc.Value } else { $null })
@@ -206,7 +206,7 @@ function Get-FslSettingAssessment {
     param($Def, $Eff, [hashtable]$Lookup)
     $isSet = ($Eff.Source -ne 'NotConfigured')
     $hasValue = $isSet -and -not [string]::IsNullOrWhiteSpace((Format-FslValue $Eff.Value))
-    $status = 'NA'; $note = 'Informatief (geen beoordeling).'
+    $status = 'NA'; $note = 'Informational (no assessment).'
     $intVal = 0; $isInt = $isSet -and [int]::TryParse((Format-FslValue $Eff.Value), [ref]$intVal)
     $profilesOn = $false
     if ($Lookup.ContainsKey('Profiles.Enabled')) { $e = $Lookup['Profiles.Enabled']; if ($e.Source -ne 'NotConfigured' -and [int]::TryParse((Format-FslValue $e.Value), [ref]$null)) { $profilesOn = ([int](Format-FslValue $e.Value) -eq 1) } }
@@ -214,34 +214,34 @@ function Get-FslSettingAssessment {
     if ($Lookup.ContainsKey('ODFC.Enabled')) { $e = $Lookup['ODFC.Enabled']; if ($e.Source -ne 'NotConfigured' -and [int]::TryParse((Format-FslValue $e.Value), [ref]$null)) { $odfcOn = ([int](Format-FslValue $e.Value) -eq 1) } }
     switch ("$($Def.Scope).$($Def.Name)") {
         'Profiles.Enabled' {
-            if ($isInt -and $intVal -eq 1) { $status = 'OK'; $note = 'Profile Containers zijn ingeschakeld.' }
-            else { $status = 'Warning'; $note = 'Profile Containers zijn niet ingeschakeld; gebruikers krijgen geen FSLogix-profiel.' }
+            if ($isInt -and $intVal -eq 1) { $status = 'OK'; $note = 'Profile Containers are enabled.' }
+            else { $status = 'Warning'; $note = 'Profile Containers are not enabled; users will not get an FSLogix profile.' }
         }
         'ODFC.Enabled' {
-            if ($isInt -and $intVal -eq 1) { $status = 'OK'; $note = 'ODFC is ingeschakeld.' } else { $status = 'NA'; $note = 'ODFC is niet ingeschakeld (optioneel).' }
+            if ($isInt -and $intVal -eq 1) { $status = 'OK'; $note = 'ODFC is enabled.' } else { $status = 'NA'; $note = 'ODFC is not enabled (optional).' }
         }
         { $_ -in 'Profiles.VHDLocations', 'ODFC.VHDLocations' } {
             $scopeOn = if ($Def.Scope -eq 'Profiles') { $profilesOn } else { $odfcOn }
             $ccd = $Lookup["$($Def.Scope).CCDLocations"]
             $ccdSet = $ccd -and $ccd.Source -ne 'NotConfigured' -and -not [string]::IsNullOrWhiteSpace((Format-FslValue $ccd.Value))
-            if ($hasValue) { $status = 'OK'; $note = 'Containerlocatie is geconfigureerd.' }
-            elseif ($scopeOn -and -not $ccdSet) { $status = 'Error'; $note = 'Ingeschakeld maar geen VHDLocations of CCDLocations ingesteld.' }
-            elseif ($scopeOn -and $ccdSet) { $status = 'NA'; $note = 'Cloud Cache (CCDLocations) wordt gebruikt.' }
-            else { $status = 'NA'; $note = 'Niet van toepassing (niet ingeschakeld).' }
+            if ($hasValue) { $status = 'OK'; $note = 'Container location is configured.' }
+            elseif ($scopeOn -and -not $ccdSet) { $status = 'Error'; $note = 'Enabled but neither VHDLocations nor CCDLocations is set.' }
+            elseif ($scopeOn -and $ccdSet) { $status = 'NA'; $note = 'Cloud Cache (CCDLocations) is used.' }
+            else { $status = 'NA'; $note = 'Not applicable (not enabled).' }
         }
         { $_ -in 'Profiles.CCDLocations', 'ODFC.CCDLocations' } {
             $vhd = $Lookup["$($Def.Scope).VHDLocations"]
             $vhdSet = $vhd -and $vhd.Source -ne 'NotConfigured' -and -not [string]::IsNullOrWhiteSpace((Format-FslValue $vhd.Value))
-            if ($hasValue -and $vhdSet) { $status = 'Warning'; $note = 'Zowel VHDLocations als CCDLocations zijn ingesteld; controleer welke actief hoort te zijn (Cloud Cache heeft normaal voorrang).' }
-            elseif ($hasValue) { $status = 'OK'; $note = 'Cloud Cache is geconfigureerd.' }
-            else { $status = 'NA'; $note = 'Cloud Cache niet in gebruik.' }
+            if ($hasValue -and $vhdSet) { $status = 'Warning'; $note = 'Both VHDLocations and CCDLocations are set; check which one should be active (Cloud Cache normally takes precedence).' }
+            elseif ($hasValue) { $status = 'OK'; $note = 'Cloud Cache is configured.' }
+            else { $status = 'NA'; $note = 'Cloud Cache not in use.' }
         }
-        'Profiles.PreventLoginWithFailure' { $note = 'Overweeg 1 zodat een mislukte koppeling geen stille tijdelijke profielen oplevert (afhankelijk van beleid).' }
-        'Profiles.PreventLoginWithTempProfile' { $note = 'Overweeg 1 zodat gebruikers niet met een tijdelijk profiel kunnen werken (afhankelijk van beleid).' }
+        'Profiles.PreventLoginWithFailure' { $note = 'Consider 1 so a failed attach does not silently produce temporary profiles (depends on policy).' }
+        'Profiles.PreventLoginWithTempProfile' { $note = 'Consider 1 so users cannot work with a temporary profile (depends on policy).' }
     }
     if ($Eff.Conflict -and $status -ne 'Error') {
         $status = 'Warning'
-        $note = "Lokale waarde ($(Format-FslValue $Eff.LocalValue)) wordt overschreven door policy ($(Format-FslValue $Eff.PolicyValue)). " + $note
+        $note = "Local value ($(Format-FslValue $Eff.LocalValue)) is overridden by policy ($(Format-FslValue $Eff.PolicyValue)). " + $note
     }
     [pscustomobject]@{ Status = $status; Note = $note }
 }
@@ -271,8 +271,8 @@ function Get-FslConfiguration {
     foreach ($def in $defs) {
         $eff = $lookup["$($def.Scope).$($def.Name)"]
         $a = Get-FslSettingAssessment -Def $def -Eff $eff -Lookup $lookup
-        $valText = if ($eff.Source -eq 'NotConfigured') { '(niet geconfigureerd)' } else { Format-FslValue $eff.Value }
-        $defText = if ($null -ne $def.Default) { "$($def.Default)" } else { 'Onbekend' }
+        $valText = if ($eff.Source -eq 'NotConfigured') { '(not configured)' } else { Format-FslValue $eff.Value }
+        $defText = if ($null -ne $def.Default) { "$($def.Default)" } else { 'Unknown' }
         $rows.Add([pscustomobject]@{
             Scope = $def.Scope; Name = $def.Name; Value = $valText; Source = $eff.SourceText; SourceKey = $eff.Source
             RegistryPath = $eff.Path; Description = $def.Description; Default = $defText
@@ -289,10 +289,10 @@ function Get-FslConfiguration {
                 if ($known.ContainsKey($key)) { continue }
                 $known[$key + '|' + $src.K] = $true
                 $rows.Add([pscustomobject]@{
-                    Scope = $scope; Name = $v.Name; Value = (Format-FslValue $v.Value); Source = $(if ($src.K -eq 'Policy') { 'Via policy' } else { 'Lokaal' }); SourceKey = $src.K
-                    RegistryPath = $src.P; Description = 'Overige waarde (geen ingebouwde uitleg).'; Default = 'Onbekend'
+                    Scope = $scope; Name = $v.Name; Value = (Format-FslValue $v.Value); Source = $(if ($src.K -eq 'Policy') { 'Via policy' } else { 'Local' }); SourceKey = $src.K
+                    RegistryPath = $src.P; Description = 'Other value (no built-in description).'; Default = 'Unknown'
                     LocalValue = ''; PolicyValue = ''
-                    Status = 'NA'; StatusText = (Get-FslStatusText 'NA'); Glyph = (Get-FslStatusGlyph 'NA'); Assessment = 'Informatief (geen beoordeling).'
+                    Status = 'NA'; StatusText = (Get-FslStatusText 'NA'); Glyph = (Get-FslStatusGlyph 'NA'); Assessment = 'Informational (no assessment).'
                 })
             }
         }
@@ -302,10 +302,10 @@ function Get-FslConfiguration {
         $m = @(Get-FslLocalGroupMembers -GroupName $g)
         $groups += [pscustomobject]@{ Group = $g; Members = $m; MemberText = ($m -join '; '); Count = $m.Count }
         $rows.Add([pscustomobject]@{
-            Scope = 'Groepen'; Name = $g; Value = $(if ($m.Count -gt 0) { $m -join '; ' } else { '(leeg of niet aanwezig)' }); Source = 'Lokale groep'; SourceKey = 'Group'
-            RegistryPath = "Lokale groep '$g'"; Description = 'Inclusie/exclusie van gebruikers voor FSLogix.'; Default = 'Onbekend'
+            Scope = 'Groups'; Name = $g; Value = $(if ($m.Count -gt 0) { $m -join '; ' } else { '(empty or not present)' }); Source = 'Local group'; SourceKey = 'Group'
+            RegistryPath = "Local group '$g'"; Description = 'Inclusion/exclusion of users for FSLogix.'; Default = 'Unknown'
             LocalValue = ''; PolicyValue = ''
-            Status = 'NA'; StatusText = (Get-FslStatusText 'NA'); Glyph = (Get-FslStatusGlyph 'NA'); Assessment = "$($m.Count) lid/leden."
+            Status = 'NA'; StatusText = (Get-FslStatusText 'NA'); Glyph = (Get-FslStatusGlyph 'NA'); Assessment = "$($m.Count) member(s)."
         })
     }
     [pscustomobject]@{ Rows = $rows.ToArray(); Lookup = $lookup; Groups = $groups }

@@ -1,41 +1,52 @@
 # Troubleshooting
 
-## De applicatie start niet of wordt geblokkeerd
-- Het uitvoerbare bestand is niet ondertekend. Antivirus, EDR of WDAC/AppLocker kan het blokkeren ("Access is denied" bij starten).
-  Vraag een uitzondering aan of onderteken de exe met een eigen certificaat. Als tijdelijk alternatief kan de bron worden gestart met
-  `start-dev.ps1` vanuit een verhoogde Windows PowerShell 5.1.
-- Controleer de hash tegen `fsl-master.exe.sha256`.
-- Bij het openen van een gedownload ZIP: *Eigenschappen → Blokkering opheffen* (Mark of the Web).
+## The scripts will not run ("is not digitally signed")
+The PowerShell execution policy blocks the scripts, typically because they came from a downloaded ZIP (Mark of the Web).
 
-## "Administratorrechten vereist"
-De applicatie moet verhoogd draaien. Kies *Ja* om opnieuw verhoogd te starten, of start met *Als administrator uitvoeren*.
+```powershell
+Get-ChildItem -Recurse . | Unblock-File
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy RemoteSigned   # this window only
+```
 
-## Onderdeel toont "Niet geïnstalleerd" of "Niet beschikbaar"
-- FSLogix is niet gevonden (geen `HKLM\SOFTWARE\FSLogix\Apps\InstallPath`, geen `Program Files\FSLogix\Apps`, geen service `frxsvc`). Dit is
-  geen fout; FSLogix-specifieke controles worden *N.v.t.* en de score krijgt de status *Onbekend*.
-- Een eventlog ontbreekt (bijv. `Microsoft-FSLogix-Apps/Admin`): dit staat onder de eventlijst vermeld.
+If the policy is enforced by Group Policy (`Get-ExecutionPolicy -List` shows `MachinePolicy`/`UserPolicy`) or is `AllSigned`, these do not help:
+sign the scripts or ask your administrator for an exception.
 
-## Geen containers of sessies zichtbaar
-- Zonder actieve gebruikers zijn er geen gekoppelde containers.
-- Open *Containers en redirects → frx-uitvoer (raw)*: staat daar uitvoer, maar herkent de parser geen records, dan wijkt het
-  uitvoerformaat van uw FSLogix-versie af. Meld een issue met de (gesanitiseerde) uitvoer.
-- Controleer of de applicatie verhoogd draait; `Get-Disk`/`Get-SmbConnection` vereisen dat.
+## The application does not start or is blocked
+- The executable is not signed. Antivirus, EDR or WDAC/AppLocker may block it ("Access is denied" when starting).
+  Request an exception or sign the exe with your own certificate. As a temporary alternative the source can be started with
+  `start-dev.ps1` from an elevated Windows PowerShell 5.1.
+- Verify the hash against `fsl-master.exe.sha256`.
+- After downloading a ZIP: *Properties → Unblock* (Mark of the Web).
 
-## "Time-out" bij fileservers
-DNS, poort 445 of het UNC-pad reageerde niet binnen `NetworkTimeoutMs` (standaard 3000 ms). Controleer DNS, firewall/NSG, de
-fileserver en de rechten van het computeraccount. Verhoog eventueel `NetworkTimeoutMs` in het configuratiebestand.
+## "Administrator rights required"
+The application must run elevated. Choose *Yes* to restart elevated, or start with *Run as administrator*.
 
-## Databronfouten
-De knop *Databronfouten (n)* in de statusbalk toont per bron de melding en het technische detail (kopieerbaar). De overige bronnen
-zijn niet beïnvloed. Zie ook het logboek.
+## A component shows "Not installed" or "Not available"
+- FSLogix was not found (no `HKLM\SOFTWARE\FSLogix\Apps\InstallPath`, no `Program Files\FSLogix\Apps`, no service `frxsvc`). This is
+  not an error; FSLogix-specific checks become *N/A* and the score gets the status *Unknown*.
+- An event log is missing (for example `Microsoft-FSLogix-Apps/Admin`): this is noted under the event list.
 
-## Logboek
-`%ProgramData%\FSL-Master\Logs\fsl-master-<datum>.log`; het exacte pad staat onder *Over FSL Master*.
+## No containers or sessions visible
+- Without active users there are no mounted containers.
+- Open *Containers and redirects → frx output (raw)*: if there is output but the parser recognises no records, the output
+  format of your FSLogix version differs. Open an issue with the (sanitized) output.
+- Check that the application runs elevated; `Get-Disk`/`Get-SmbConnection` require it.
 
-## De refresh duurt lang
-Een volledige refresh duurt normaal 10–30 s (Windows Update-geschiedenis, volume- en SMB-informatie). Trage DNS of onbereikbare
-fileservers kunnen dit met de time-outs verlengen. De GUI blijft ondertussen bruikbaar.
+## "Timeout" for file servers
+DNS, port 445 or the UNC path did not answer within `NetworkTimeoutMs` (default 3000 ms). Check DNS, firewall/NSG, the
+file server and the permissions of the computer account. Optionally increase `NetworkTimeoutMs` in the configuration file.
 
-## Ontwikkeling: testen zonder FSLogix
-- `start-dev.ps1 -AllowNonElevated -CaptureScreenshots <map>` rendert alle pagina's naar PNG.
-- De Pester-tests gebruiken mocks voor registry, services en eventlogs.
+## Data source errors
+The *Data source errors (n)* button in the status bar shows the message and technical detail per source (copyable). The other sources
+are not affected. See also the log file.
+
+## Log file
+`%ProgramData%\FSL-Master\Logs\fsl-master-<date>.log`; the exact path is shown under *About FSL Master*.
+
+## The refresh takes long
+A full refresh normally takes 10–30 s (Windows Update history, volume and SMB information). Slow DNS or unreachable
+file servers can extend this by the timeouts. The GUI stays usable meanwhile.
+
+## Development: testing without FSLogix
+- `start-dev.ps1 -AllowNonElevated -CaptureScreenshots <folder>` renders all pages to PNG.
+- The Pester tests use mocks for registry, services and event logs.

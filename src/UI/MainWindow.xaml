@@ -157,22 +157,22 @@
           <TextBlock Text="Local FSLogix diagnostics and monitoring for Azure Virtual Desktop" Foreground="{DynamicResource MutedBrush}" FontSize="11"/>
         </StackPanel>
         <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
-          <TextBlock Text="Periode:" Margin="0,0,6,0" VerticalAlignment="Center" Foreground="{DynamicResource MutedBrush}"/>
-          <ComboBox x:Name="CmbPeriod" Width="100" ToolTip="Periode voor events en foutentelling">
-            <ComboBoxItem Content="1 uur" Tag="1"/>
-            <ComboBoxItem Content="24 uur" Tag="24" IsSelected="True"/>
-            <ComboBoxItem Content="7 dagen" Tag="168"/>
-            <ComboBoxItem Content="30 dagen" Tag="720"/>
+          <TextBlock Text="Period:" Margin="0,0,6,0" VerticalAlignment="Center" Foreground="{DynamicResource MutedBrush}"/>
+          <ComboBox x:Name="CmbPeriod" Width="100" ToolTip="Period for events and error counts">
+            <ComboBoxItem Content="1 hour" Tag="1"/>
+            <ComboBoxItem Content="24 hours" Tag="24" IsSelected="True"/>
+            <ComboBoxItem Content="7 days" Tag="168"/>
+            <ComboBoxItem Content="30 days" Tag="720"/>
           </ComboBox>
           <TextBlock Text="Auto-refresh:" Margin="0,0,6,0" VerticalAlignment="Center" Foreground="{DynamicResource MutedBrush}"/>
-          <ComboBox x:Name="CmbAuto" Width="90" ToolTip="Automatisch verversen (overlappende acties worden voorkomen)">
-            <ComboBoxItem Content="Uit" Tag="0" IsSelected="True"/>
+          <ComboBox x:Name="CmbAuto" Width="90" ToolTip="Automatic refresh (overlapping refreshes are prevented)">
+            <ComboBoxItem Content="Off" Tag="0" IsSelected="True"/>
             <ComboBoxItem Content="30 sec" Tag="30"/>
             <ComboBoxItem Content="60 sec" Tag="60"/>
             <ComboBoxItem Content="5 min" Tag="300"/>
           </ComboBox>
-          <Button x:Name="BtnRefresh" Content="&#x21BB; Vernieuwen" ToolTip="Alle gegevens opnieuw ophalen (alleen lezen)"/>
-          <Button x:Name="BtnTheme" Content="Thema" ToolTip="Wissel tussen donker en licht thema" Margin="0"/>
+          <Button x:Name="BtnRefresh" Content="&#x21BB; Refresh" ToolTip="Fetch all data again (read-only)"/>
+          <Button x:Name="BtnTheme" Content="Theme" ToolTip="Switch between dark and light theme" Margin="0"/>
         </StackPanel>
       </DockPanel>
     </Border>
@@ -187,15 +187,15 @@
       <Border Grid.Column="0" Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="0,0,1,0" Padding="8,10">
         <StackPanel>
           <RadioButton x:Name="NavDashboard" Style="{StaticResource NavBtn}" GroupName="nav" Content="Dashboard" IsChecked="True"/>
-          <RadioButton x:Name="NavConfig" Style="{StaticResource NavBtn}" GroupName="nav" Content="FSLogix-configuratie"/>
-          <RadioButton x:Name="NavServices" Style="{StaticResource NavBtn}" GroupName="nav" Content="Services en componenten"/>
-          <RadioButton x:Name="NavSessions" Style="{StaticResource NavBtn}" GroupName="nav" Content="Gebruikers en sessies"/>
-          <RadioButton x:Name="NavContainers" Style="{StaticResource NavBtn}" GroupName="nav" Content="Containers en redirects"/>
+          <RadioButton x:Name="NavConfig" Style="{StaticResource NavBtn}" GroupName="nav" Content="FSLogix configuration"/>
+          <RadioButton x:Name="NavServices" Style="{StaticResource NavBtn}" GroupName="nav" Content="Services and components"/>
+          <RadioButton x:Name="NavSessions" Style="{StaticResource NavBtn}" GroupName="nav" Content="Users and sessions"/>
+          <RadioButton x:Name="NavContainers" Style="{StaticResource NavBtn}" GroupName="nav" Content="Containers and redirects"/>
           <RadioButton x:Name="NavEvents" Style="{StaticResource NavBtn}" GroupName="nav" Content="Events"/>
-          <RadioButton x:Name="NavLogs" Style="{StaticResource NavBtn}" GroupName="nav" Content="FSLogix-logbestanden"/>
+          <RadioButton x:Name="NavLogs" Style="{StaticResource NavBtn}" GroupName="nav" Content="FSLogix log files"/>
           <RadioButton x:Name="NavHealth" Style="{StaticResource NavBtn}" GroupName="nav" Content="Health check"/>
-          <RadioButton x:Name="NavReport" Style="{StaticResource NavBtn}" GroupName="nav" Content="Rapportage"/>
-          <RadioButton x:Name="NavAbout" Style="{StaticResource NavBtn}" GroupName="nav" Content="Over FSL Master"/>
+          <RadioButton x:Name="NavReport" Style="{StaticResource NavBtn}" GroupName="nav" Content="Reporting"/>
+          <RadioButton x:Name="NavAbout" Style="{StaticResource NavBtn}" GroupName="nav" Content="About FSL Master"/>
         </StackPanel>
       </Border>
 
@@ -209,7 +209,7 @@
               <TextBlock x:Name="TxtBanner" TextWrapping="Wrap" FontWeight="SemiBold"/>
             </Border>
             <WrapPanel x:Name="WpCards"/>
-            <TextBlock Text="Aandachtspunten" FontSize="15" FontWeight="SemiBold" Margin="0,14,0,6"/>
+            <TextBlock Text="Attention points" FontSize="15" FontWeight="SemiBold" Margin="0,14,0,6"/>
             <DataGrid x:Name="GridDashIssues" MaxHeight="320" MinHeight="60"/>
           </StackPanel>
         </ScrollViewer>
@@ -218,27 +218,27 @@
         <Grid x:Name="PageConfig" Visibility="Collapsed">
           <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
           <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
-            <TextBlock Text="Zoeken:" VerticalAlignment="Center" Margin="0,0,6,0"/>
+            <TextBlock Text="Search:" VerticalAlignment="Center" Margin="0,0,6,0"/>
             <TextBox x:Name="TxtCfgSearch" Width="240"/>
-            <CheckBox x:Name="ChkCfgOnlySet" Content="Alleen geconfigureerd"/>
+            <CheckBox x:Name="ChkCfgOnlySet" Content="Configured only"/>
             <Button x:Name="BtnCfgJson" Content="Export JSON"/>
             <Button x:Name="BtnCfgCsv" Content="Export CSV"/>
-            <Button x:Name="BtnCfgCopy" Content="Kopieer selectie"/>
+            <Button x:Name="BtnCfgCopy" Content="Copy selection"/>
           </StackPanel>
           <DataGrid x:Name="GridConfig" Grid.Row="1"/>
           <TextBlock x:Name="TxtCfgNote" Grid.Row="2" Margin="0,6,0,0" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap"
-                     Text="Effectieve waarde: policy (HKLM\SOFTWARE\Policies\FSLogix) gaat v&#xF3;&#xF3;r lokale waarde (HKLM\SOFTWARE\FSLogix). 'Onbekend' bij Default betekent dat er geen betrouwbare standaardwaarde is vastgesteld."/>
+                     Text="Effective value: policy (HKLM\SOFTWARE\Policies\FSLogix) takes precedence over the local value (HKLM\SOFTWARE\FSLogix). 'Unknown' under Default means no reliable default value could be established."/>
         </Grid>
 
         <!-- Services -->
         <Grid x:Name="PageServices" Visibility="Collapsed">
           <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
           <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
-            <Button x:Name="BtnSvcStart" Content="&#x25B6; Start service" ToolTip="Beheeractie: start de geselecteerde FSLogix-service (vraagt bevestiging)"/>
-            <Button x:Name="BtnSvcStop" Content="&#x25A0; Stop service" ToolTip="Beheeractie: stopt de geselecteerde FSLogix-service (vraagt bevestiging)"/>
-            <Button x:Name="BtnSvcRestart" Content="&#x21BB; Herstart service" ToolTip="Beheeractie: herstart de geselecteerde FSLogix-service (vraagt bevestiging)"/>
-            <Button x:Name="BtnSvcCopy" Content="Kopieer selectie"/>
-            <TextBlock Text="&#x26A0; Serviceacties zijn beheeracties: bevestiging vereist en alles wordt gelogd. Alleen frxsvc en frxccds." VerticalAlignment="Center" Foreground="{DynamicResource MutedBrush}" Margin="10,0,0,0"/>
+            <Button x:Name="BtnSvcStart" Content="&#x25B6; Start service" ToolTip="Management action: starts the selected FSLogix service (asks for confirmation)"/>
+            <Button x:Name="BtnSvcStop" Content="&#x25A0; Stop service" ToolTip="Management action: stops the selected FSLogix service (asks for confirmation)"/>
+            <Button x:Name="BtnSvcRestart" Content="&#x21BB; Restart service" ToolTip="Management action: restarts the selected FSLogix service (asks for confirmation)"/>
+            <Button x:Name="BtnSvcCopy" Content="Copy selection"/>
+            <TextBlock Text="&#x26A0; Service actions are management actions: confirmation required and everything is logged. Only frxsvc and frxccds." VerticalAlignment="Center" Foreground="{DynamicResource MutedBrush}" Margin="10,0,0,0"/>
           </StackPanel>
           <DataGrid x:Name="GridServices" Grid.Row="1"/>
         </Grid>
@@ -247,10 +247,10 @@
         <Grid x:Name="PageSessions" Visibility="Collapsed">
           <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
           <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
-            <TextBlock Text="Zoeken:" VerticalAlignment="Center" Margin="0,0,6,0"/>
+            <TextBlock Text="Search:" VerticalAlignment="Center" Margin="0,0,6,0"/>
             <TextBox x:Name="TxtSesSearch" Width="240"/>
             <Button x:Name="BtnSesCsv" Content="Export CSV"/>
-            <Button x:Name="BtnSesCopy" Content="Kopieer selectie"/>
+            <Button x:Name="BtnSesCopy" Content="Copy selection"/>
             <TextBlock x:Name="TxtSesCount" VerticalAlignment="Center" Foreground="{DynamicResource MutedBrush}" Margin="8,0,0,0"/>
           </StackPanel>
           <DataGrid x:Name="GridSessions" Grid.Row="1"/>
@@ -261,18 +261,18 @@
           <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
           <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
             <RadioButton x:Name="RbCtMain" Style="{StaticResource SegBtn}" GroupName="ct" Content="Containers" IsChecked="True"/>
-            <RadioButton x:Name="RbCtVol" Style="{StaticResource SegBtn}" GroupName="ct" Content="Gekoppelde VHD(X)-volumes"/>
-            <RadioButton x:Name="RbCtSmb" Style="{StaticResource SegBtn}" GroupName="ct" Content="SMB-connecties"/>
-            <RadioButton x:Name="RbCtProf" Style="{StaticResource SegBtn}" GroupName="ct" Content="Lokale profielen"/>
-            <RadioButton x:Name="RbCtRaw" Style="{StaticResource SegBtn}" GroupName="ct" Content="frx-uitvoer (raw)"/>
+            <RadioButton x:Name="RbCtVol" Style="{StaticResource SegBtn}" GroupName="ct" Content="Mounted VHD(X) volumes"/>
+            <RadioButton x:Name="RbCtSmb" Style="{StaticResource SegBtn}" GroupName="ct" Content="SMB connections"/>
+            <RadioButton x:Name="RbCtProf" Style="{StaticResource SegBtn}" GroupName="ct" Content="Local profiles"/>
+            <RadioButton x:Name="RbCtRaw" Style="{StaticResource SegBtn}" GroupName="ct" Content="frx output (raw)"/>
           </StackPanel>
           <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,8">
-            <TextBlock Text="Zoeken:" VerticalAlignment="Center" Margin="0,0,6,0"/>
+            <TextBlock Text="Search:" VerticalAlignment="Center" Margin="0,0,6,0"/>
             <TextBox x:Name="TxtCtSearch" Width="220"/>
             <Button x:Name="BtnCtCsv" Content="Export CSV"/>
             <Button x:Name="BtnCtJson" Content="Export JSON"/>
             <Button x:Name="BtnCtHtml" Content="Export HTML"/>
-            <Button x:Name="BtnCtCopy" Content="Kopieer selectie"/>
+            <Button x:Name="BtnCtCopy" Content="Copy selection"/>
           </StackPanel>
           <Grid Grid.Row="2">
             <DataGrid x:Name="GridContainers"/>
@@ -291,21 +291,21 @@
             <TextBlock Text="Log:" VerticalAlignment="Center" Margin="0,0,6,0"/>
             <ComboBox x:Name="CmbEvLog" Width="230"/>
             <TextBlock Text="Event ID:" VerticalAlignment="Center" Margin="0,0,6,0"/>
-            <TextBox x:Name="TxtEvId" Width="70" ToolTip="Bijvoorbeeld 26 of 25,26,57"/>
+            <TextBox x:Name="TxtEvId" Width="70" ToolTip="For example 26 or 25,26,57"/>
             <CheckBox x:Name="ChkEvError" Content="Errors" IsChecked="True"/>
             <CheckBox x:Name="ChkEvWarn" Content="Warnings" IsChecked="True"/>
             <CheckBox x:Name="ChkEvInfo" Content="Information" IsChecked="True"/>
-            <CheckBox x:Name="ChkEvMarked" Content="Alleen gemarkeerde ID's"/>
-            <TextBlock Text="Gebruiker/SID:" VerticalAlignment="Center" Margin="0,0,6,0"/>
+            <CheckBox x:Name="ChkEvMarked" Content="Marked IDs only"/>
+            <TextBlock Text="User/SID:" VerticalAlignment="Center" Margin="0,0,6,0"/>
             <TextBox x:Name="TxtEvUser" Width="140"/>
-            <TextBlock Text="Zoeken:" VerticalAlignment="Center" Margin="0,0,6,0"/>
+            <TextBlock Text="Search:" VerticalAlignment="Center" Margin="0,0,6,0"/>
             <TextBox x:Name="TxtEvSearch" Width="200"/>
           </WrapPanel>
           <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,6">
             <Button x:Name="BtnEvDetail" Content="Details"/>
-            <Button x:Name="BtnEvCopy" Content="Kopieer bericht"/>
+            <Button x:Name="BtnEvCopy" Content="Copy message"/>
             <Button x:Name="BtnEvCsv" Content="Export CSV"/>
-            <Button x:Name="BtnEvMarks" Content="Gemarkeerde ID's..." ToolTip="Bewerk de lijst met gemarkeerde Event ID's (lokaal JSON-configuratiebestand)"/>
+            <Button x:Name="BtnEvMarks" Content="Marked IDs..." ToolTip="Edit the list of marked Event IDs (local JSON configuration file)"/>
             <TextBlock x:Name="TxtEvCount" VerticalAlignment="Center" Foreground="{DynamicResource MutedBrush}" Margin="8,0,0,0"/>
           </StackPanel>
           <DataGrid x:Name="GridEvents" Grid.Row="2" RowStyle="{StaticResource LevelRows}"/>
@@ -316,34 +316,34 @@
         <Grid x:Name="PageLogs" Visibility="Collapsed">
           <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="170"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
           <WrapPanel Grid.Row="0" Margin="0,0,0,6">
-            <Button x:Name="BtnLogRefresh" Content="&#x21BB; Lijst vernieuwen"/>
-            <TextBlock Text="Datum:" VerticalAlignment="Center" Margin="0,0,6,0"/>
+            <Button x:Name="BtnLogRefresh" Content="&#x21BB; Refresh list"/>
+            <TextBlock Text="Date:" VerticalAlignment="Center" Margin="0,0,6,0"/>
             <DatePicker x:Name="DpLogDate" Width="120" Margin="0,0,6,0"/>
-            <Button x:Name="BtnLogDateClear" Content="Wis"/>
-            <TextBlock Text="Laad laatste:" VerticalAlignment="Center" Margin="10,0,6,0"/>
+            <Button x:Name="BtnLogDateClear" Content="Clear"/>
+            <TextBlock Text="Load last:" VerticalAlignment="Center" Margin="10,0,6,0"/>
             <ComboBox x:Name="CmbLogTail" Width="110">
               <ComboBoxItem Content="256 KB" Tag="262144"/>
               <ComboBoxItem Content="1 MB" Tag="1048576" IsSelected="True"/>
               <ComboBoxItem Content="5 MB" Tag="5242880"/>
               <ComboBoxItem Content="20 MB" Tag="20971520"/>
             </ComboBox>
-            <Button x:Name="BtnLogLoad" Content="Openen"/>
+            <Button x:Name="BtnLogLoad" Content="Open"/>
           </WrapPanel>
           <WrapPanel Grid.Row="1" Margin="0,0,0,6">
-            <TextBlock Text="Zoeken:" VerticalAlignment="Center" Margin="0,0,6,0"/>
+            <TextBlock Text="Search:" VerticalAlignment="Center" Margin="0,0,6,0"/>
             <TextBox x:Name="TxtLogSearch" Width="180"/>
-            <TextBlock Text="Gebruiker/SID:" VerticalAlignment="Center" Margin="0,0,6,0"/>
+            <TextBlock Text="User/SID:" VerticalAlignment="Center" Margin="0,0,6,0"/>
             <TextBox x:Name="TxtLogUser" Width="150"/>
             <CheckBox x:Name="ChkLogErr" Content="ERROR" IsChecked="True"/>
             <CheckBox x:Name="ChkLogWarn" Content="WARN" IsChecked="True"/>
-            <CheckBox x:Name="ChkLogInfo" Content="Overig" IsChecked="True"/>
+            <CheckBox x:Name="ChkLogInfo" Content="Other" IsChecked="True"/>
             <StackPanel x:Name="SpLogQuick" Orientation="Horizontal"/>
           </WrapPanel>
           <DataGrid x:Name="GridLogFiles" Grid.Row="2" Margin="0,0,0,6"/>
           <DataGrid x:Name="GridLogLines" Grid.Row="3" RowStyle="{StaticResource LogRows}" FontFamily="Consolas"/>
           <StackPanel Grid.Row="4" Orientation="Horizontal" Margin="0,6,0,0">
-            <Button x:Name="BtnLogCopy" Content="Kopieer selectie"/>
-            <Button x:Name="BtnLogExport" Content="Exporteer fragment..."/>
+            <Button x:Name="BtnLogCopy" Content="Copy selection"/>
+            <Button x:Name="BtnLogExport" Content="Export fragment..."/>
             <TextBlock x:Name="TxtLogInfo" VerticalAlignment="Center" Foreground="{DynamicResource MutedBrush}" Margin="8,0,0,0"/>
           </StackPanel>
         </Grid>
@@ -362,17 +362,17 @@
             </StackPanel>
           </Border>
           <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,8">
-            <Button x:Name="BtnHealthRun" Content="&#x21BB; Health check uitvoeren" ToolTip="Alleen-lezen controles; er worden geen wijzigingen aangebracht"/>
+            <Button x:Name="BtnHealthRun" Content="&#x21BB; Run health check" ToolTip="Read-only checks; no changes are made"/>
             <TextBlock Text="Filter:" VerticalAlignment="Center" Margin="8,0,6,0"/>
             <ComboBox x:Name="CmbHealthFilter" Width="150">
-              <ComboBoxItem Content="Alles" IsSelected="True" Tag=""/>
-              <ComboBoxItem Content="Alleen problemen" Tag="problems"/>
-              <ComboBoxItem Content="Fout" Tag="Error"/>
-              <ComboBoxItem Content="Waarschuwing" Tag="Warning"/>
-              <ComboBoxItem Content="Onbekend" Tag="Unknown"/>
+              <ComboBoxItem Content="All" IsSelected="True" Tag=""/>
+              <ComboBoxItem Content="Problems only" Tag="problems"/>
+              <ComboBoxItem Content="Error" Tag="Error"/>
+              <ComboBoxItem Content="Warning" Tag="Warning"/>
+              <ComboBoxItem Content="Unknown" Tag="Unknown"/>
             </ComboBox>
             <Button x:Name="BtnHealthCsv" Content="Export CSV"/>
-            <Button x:Name="BtnHealthCopy" Content="Kopieer selectie"/>
+            <Button x:Name="BtnHealthCopy" Content="Copy selection"/>
           </StackPanel>
           <DataGrid x:Name="GridHealth" Grid.Row="2"/>
         </Grid>
@@ -380,14 +380,14 @@
         <!-- Report -->
         <ScrollViewer x:Name="PageReport" Visibility="Collapsed" VerticalScrollBarVisibility="Auto">
           <StackPanel MaxWidth="820" HorizontalAlignment="Left">
-            <TextBlock Text="Rapportage" FontSize="18" FontWeight="SemiBold" Margin="0,0,0,8"/>
+            <TextBlock Text="Reporting" FontSize="18" FontWeight="SemiBold" Margin="0,0,0,8"/>
             <TextBlock TextWrapping="Wrap" Foreground="{DynamicResource MutedBrush}" Margin="0,0,0,12"
-                       Text="Het rapport bevat hostinformatie, Windows/AVD, FSLogix-versie, services, effectieve configuratie, sessies, containers, recente relevante events, health-checkresultaten, de gezondheidsscore en aanbevelingen. Het rapport wordt gemaakt van de laatste refresh."/>
-            <CheckBox x:Name="ChkSanitize" Content="Sanitized report (maskeert gebruikersnamen, SID's, servernamen, domeinnamen en UNC-paden)" Margin="0,0,0,12"/>
+                       Text="The report contains host information, Windows/AVD, FSLogix version, services, effective configuration, sessions, containers, recent relevant events, health check results, the health score and recommendations. The report is created from the last refresh."/>
+            <CheckBox x:Name="ChkSanitize" Content="Sanitized report (masks user names, SIDs, server names, domain names and UNC paths)" Margin="0,0,0,12"/>
             <StackPanel Orientation="Horizontal">
               <Button x:Name="BtnRepHtml" Content="Export HTML"/>
               <Button x:Name="BtnRepJson" Content="Export JSON"/>
-              <Button x:Name="BtnRepCsv" Content="Export CSV (per onderdeel)"/>
+              <Button x:Name="BtnRepCsv" Content="Export CSV (per section)"/>
               <Button x:Name="BtnRepTxt" Content="Export TXT"/>
             </StackPanel>
             <TextBlock x:Name="TxtRepResult" Margin="0,12,0,0" TextWrapping="Wrap"/>
@@ -402,7 +402,7 @@
             <TextBlock x:Name="TxtAboutInfo" TextWrapping="Wrap" Margin="0,0,0,10"/>
             <TextBlock><Hyperlink x:Name="LnkRepo" NavigateUri="https://github.com/WayToWild/fsl-master">https://github.com/WayToWild/fsl-master</Hyperlink></TextBlock>
             <TextBlock TextWrapping="Wrap" Foreground="{DynamicResource MutedBrush}" Margin="0,14,0,0"
-                       Text="FSL Master werkt uitsluitend lokaal, verstuurt geen telemetrie en voert standaard alleen lezende controles uit. Gebruik in productie op eigen risico; zie de disclaimer in README.md."/>
+                       Text="FSL Master works locally only, sends no telemetry and by default performs read-only checks. Use in production at your own risk; see the disclaimer in README.md."/>
           </StackPanel>
         </ScrollViewer>
       </Grid>
@@ -412,10 +412,10 @@
     <Border Grid.Row="2" Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="0,1,0,0" Padding="14,6">
       <DockPanel>
         <TextBlock x:Name="TxtAdmin" DockPanel.Dock="Right" Margin="14,0,0,0" VerticalAlignment="Center"/>
-        <Button x:Name="BtnErrors" DockPanel.Dock="Right" Content="Databronfouten (0)" Margin="14,0,0,0" Padding="8,2"/>
+        <Button x:Name="BtnErrors" DockPanel.Dock="Right" Content="Data source errors (0)" Margin="14,0,0,0" Padding="8,2"/>
         <TextBlock x:Name="TxtLast" DockPanel.Dock="Right" VerticalAlignment="Center" Foreground="{DynamicResource MutedBrush}"/>
         <ProgressBar x:Name="PbRefresh" DockPanel.Dock="Left" Width="180" Height="10" Minimum="0" Maximum="100" Margin="0,0,10,0" VerticalAlignment="Center"/>
-        <TextBlock x:Name="TxtStatus" VerticalAlignment="Center" Text="Gereed" TextTrimming="CharacterEllipsis"/>
+        <TextBlock x:Name="TxtStatus" VerticalAlignment="Center" Text="Ready" TextTrimming="CharacterEllipsis"/>
       </DockPanel>
     </Border>
   </Grid>

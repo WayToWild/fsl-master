@@ -12,7 +12,7 @@ if (-not $script:FslBundled) {
         'Collectors\Events.ps1', 'Collectors\Health.ps1', 'Collectors\Collect.ps1', 'Export\Report.ps1', 'UI\Ui.ps1') {
         . (Join-Path $script:SrcRoot $m)
     }
-    $script:FslBuildInfo = @{ BuildDate = 'ontwikkelversie (broncode)'; Commit = '' }
+    $script:FslBuildInfo = @{ BuildDate = 'development build (source)'; Commit = '' }
     try { $script:FslBuildInfo.Commit = (& git -C (Split-Path -Parent $script:SrcRoot) rev-parse --short HEAD 2>$null) } catch { }
     $env:FSLM_APPDIR = Split-Path -Parent $script:SrcRoot
 }
@@ -21,7 +21,7 @@ if (-not $script:FslBundled) {
 $app = Get-FslAppInfo
 $null = Initialize-FslLog
 $isAdmin = Test-FslIsAdministrator
-Write-FslLog -Level INFO -Message "Applicatiestart: $($app.Name) $($app.Version); beheerder=$isAdmin; PID=$PID; PowerShell=$($PSVersionTable.PSVersion)"
+Write-FslLog -Level INFO -Message "Application start: $($app.Name) $($app.Version); administrator=$isAdmin; PID=$PID; PowerShell=$($PSVersionTable.PSVersion)"
 
 # ---------------------------------------------------------------- self test (no GUI)
 if ($SelfTest) {
@@ -46,7 +46,7 @@ if ($SelfTest) {
         ($summary | ConvertTo-Json -Depth 4) | Set-Content -LiteralPath $SelfTest -Encoding UTF8
         exit 0
     } catch {
-        Write-FslLog -Level ERROR -Message 'Selftest mislukt' -Exception $_
+        Write-FslLog -Level ERROR -Message 'Self-test failed' -Exception $_
         ($_ | Out-String) | Set-Content -LiteralPath $SelfTest -Encoding UTF8
         exit 1
     }
@@ -56,16 +56,16 @@ Add-Type -AssemblyName PresentationFramework, PresentationCore, WindowsBase, Sys
 
 # ---------------------------------------------------------------- elevation check
 if (-not $isAdmin -and -not $AllowNonElevated) {
-    $choice = [Windows.MessageBox]::Show("FSL Master vereist administratorrechten om FSLogix, services, eventlogs en volumes te kunnen lezen.`n`nWilt u de applicatie opnieuw starten met verhoogde rechten?", 'FSL Master - administratorrechten vereist', 'YesNo', 'Warning')
+    $choice = [Windows.MessageBox]::Show("FSL Master requires administrator rights to read FSLogix, services, event logs and volumes.`n`nDo you want to restart the application with elevated rights?", 'FSL Master - administrator rights required', 'YesNo', 'Warning')
     if ($choice -eq 'Yes') {
         try {
             $exe = [Diagnostics.Process]::GetCurrentProcess().MainModule.FileName
             if ($exe -match '(?i)\\(powershell|pwsh)\.exe$') {
                 Start-Process -FilePath $exe -Verb RunAs -ArgumentList @('-STA', '-NoProfile', '-File', ('"' + $PSCommandPath + '"'))
             } else { Start-Process -FilePath $exe -Verb RunAs }
-            Write-FslLog -Level INFO -Message 'Verhoogde herstart aangevraagd; niet-verhoogde instantie sluit af.'
-        } catch { Write-FslLog -Level WARN -Message 'Verhoogd herstarten geannuleerd of mislukt.' -Exception $_ }
-    } else { Write-FslLog -Level INFO -Message 'Gebruiker koos niet voor verhoogde herstart; applicatie sluit af.' }
+            Write-FslLog -Level INFO -Message 'Elevated restart requested; the non-elevated instance exits.'
+        } catch { Write-FslLog -Level WARN -Message 'Elevated restart cancelled or failed.' -Exception $_ }
+    } else { Write-FslLog -Level INFO -Message 'User chose not to restart elevated; application exits.' }
     exit 0
 }
 
@@ -75,8 +75,8 @@ $xaml = if ($script:FslMainXaml) { $script:FslMainXaml } else { [IO.File]::ReadA
 try {
     $win = [Windows.Markup.XamlReader]::Parse($xaml)
 } catch {
-    Write-FslLog -Level ERROR -Message 'XAML kon niet worden geladen' -Exception $_
-    [void][Windows.MessageBox]::Show("De gebruikersinterface kon niet worden geladen:`n$($_.Exception.Message)", 'FSL Master', 'OK', 'Error')
+    Write-FslLog -Level ERROR -Message 'XAML could not be loaded' -Exception $_
+    [void][Windows.MessageBox]::Show("The user interface could not be loaded:`n$($_.Exception.Message)", 'FSL Master', 'OK', 'Error')
     exit 1
 }
 foreach ($m in [regex]::Matches($xaml, 'x:Name="(\w+)"')) { $n = $m.Groups[1].Value; $script:Ui[$n] = $win.FindName($n) }
@@ -90,12 +90,12 @@ Initialize-FslUiGrids
 Set-FslUiTheme -Name $script:Config.Theme
 
 # header info
-$script:Ui.TxtAdmin.Text = if ($isAdmin) { ([string][char]0x2714) + ' Beheerder' } else { ([string][char]0x26A0) + ' Geen beheerder (beperkte modus)' }
+$script:Ui.TxtAdmin.Text = if ($isAdmin) { ([string][char]0x2714) + ' Administrator' } else { ([string][char]0x26A0) + ' Not an administrator (limited mode)' }
 $script:Ui.TxtAdmin.Foreground = Get-FslUiBrush $(if ($isAdmin) { '#2E7D32' } else { '#E65100' })
-$bi = if ($script:FslBuildInfo) { $script:FslBuildInfo } else { @{ BuildDate = 'onbekend'; Commit = '' } }
+$bi = if ($script:FslBuildInfo) { $script:FslBuildInfo } else { @{ BuildDate = 'unknown'; Commit = '' } }
 $script:Ui.TxtAboutName.Text = "$($app.Name) $($app.Version)"
 $script:Ui.TxtAboutDesc.Text = $app.Description
-$script:Ui.TxtAboutInfo.Text = "Versie: $($app.Version)`nBuilddatum: $($bi.BuildDate)`nGit commit: $(if ($bi.Commit) { $bi.Commit } else { 'niet beschikbaar' })`nLicentie: $($app.License)`nLogmap: $($env:FSLM_LOGDIR)`nConfiguratie: $((Get-FslConfigCandidates) -join '  |  ')"
+$script:Ui.TxtAboutInfo.Text = "Version: $($app.Version)`nBuild date: $($bi.BuildDate)`nGit commit: $(if ($bi.Commit) { $bi.Commit } else { 'not available' })`nLicense: $($app.License)`nLog folder: $($env:FSLM_LOGDIR)`nConfiguration: $((Get-FslConfigCandidates) -join '  |  ')"
 $script:Ui.MainWin.Title = "$($app.Name) $($app.Version)"
 $script:Ui.LnkRepo.Add_RequestNavigate({ try { Start-Process -FilePath $args[1].Uri.AbsoluteUri } catch { }; $args[1].Handled = $true })
 
@@ -106,7 +106,7 @@ foreach ($q in 'ERROR', 'WARN', 'attach', 'detach', 'failed', 'timeout', 'locked
     $btn.Add_Click({ $script:Ui.TxtLogSearch.Text = "$($args[0].Tag)" })
     [void]$script:Ui.SpLogQuick.Children.Add($btn)
 }
-$clr = New-Object Windows.Controls.Button; $clr.Content = 'Wis filter'; $clr.Padding = New-Object Windows.Thickness(7, 2, 7, 2)
+$clr = New-Object Windows.Controls.Button; $clr.Content = 'Clear filter'; $clr.Padding = New-Object Windows.Thickness(7, 2, 7, 2)
 $clr.Add_Click({ $script:Ui.TxtLogSearch.Text = ''; $script:Ui.TxtLogUser.Text = '' })
 [void]$script:Ui.SpLogQuick.Children.Add($clr)
 
@@ -143,13 +143,13 @@ $script:Ui.CmbAuto.Add_SelectionChanged({
         $s = 0; [void][int]::TryParse("$($script:Ui.CmbAuto.SelectedItem.Tag)", [ref]$s)
         $script:AutoTimer.Stop()
         if ($s -gt 0) { $script:AutoTimer.Interval = [TimeSpan]::FromSeconds($s); $script:AutoTimer.Start() }
-        Write-FslLog -Level INFO -Message "Auto-refresh ingesteld op $s seconden"
+        Write-FslLog -Level INFO -Message "Auto-refresh set to $s seconds"
     })
 $script:Ui.BtnTheme.Add_Click({ Set-FslUiTheme -Name $(if ($script:Config.Theme -eq 'Dark') { 'Light' } else { 'Dark' }) })
 $script:Ui.BtnErrors.Add_Click({
         $e = if ($script:Snap) { @($script:Snap.Errors) } else { @() }
-        if ($e.Count -eq 0) { Show-FslUiMessage 'Geen databronfouten tijdens de laatste refresh.'; return }
-        Show-FslUiTextWindow -Title 'Databronfouten' -Intro 'Een fout in een databron blokkeert de overige onderdelen niet.' -Text (($e | ForEach-Object { "[$($_.Source)] $($_.Message)`r`n$($_.Detail)`r`n" }) -join "`r`n")
+        if ($e.Count -eq 0) { Show-FslUiMessage 'No data source errors during the last refresh.'; return }
+        Show-FslUiTextWindow -Title 'Data source errors' -Intro 'A failing data source does not block the other components.' -Text (($e | ForEach-Object { "[$($_.Source)] $($_.Message)`r`n$($_.Detail)`r`n" }) -join "`r`n")
     })
 
 # filters -> debounced updates
@@ -165,8 +165,8 @@ $script:Ui.CmbEvLog.Add_SelectionChanged({ Request-FslUiFilter -Key 'events' })
 $script:Ui.CmbHealthFilter.Add_SelectionChanged({ Request-FslUiFilter -Key 'health' })
 
 # config page
-$script:Ui.BtnCfgJson.Add_Click({ Invoke-FslUiExport -GridName 'GridConfig' -Format json -Title 'FSLogix-configuratie' -BaseName 'fslogix-config' })
-$script:Ui.BtnCfgCsv.Add_Click({ Invoke-FslUiExport -GridName 'GridConfig' -Format csv -Title 'FSLogix-configuratie' -BaseName 'fslogix-config' })
+$script:Ui.BtnCfgJson.Add_Click({ Invoke-FslUiExport -GridName 'GridConfig' -Format json -Title 'FSLogix configuration' -BaseName 'fslogix-config' })
+$script:Ui.BtnCfgCsv.Add_Click({ Invoke-FslUiExport -GridName 'GridConfig' -Format csv -Title 'FSLogix configuration' -BaseName 'fslogix-config' })
 $script:Ui.BtnCfgCopy.Add_Click({ Copy-FslUiText -Text (Get-FslUiGridText 'GridConfig') })
 # services
 $script:Ui.BtnSvcStart.Add_Click({ Invoke-FslUiServiceAction -Action Start })
@@ -174,7 +174,7 @@ $script:Ui.BtnSvcStop.Add_Click({ Invoke-FslUiServiceAction -Action Stop })
 $script:Ui.BtnSvcRestart.Add_Click({ Invoke-FslUiServiceAction -Action Restart })
 $script:Ui.BtnSvcCopy.Add_Click({ Copy-FslUiText -Text (Get-FslUiGridText 'GridServices') })
 # sessions
-$script:Ui.BtnSesCsv.Add_Click({ Invoke-FslUiExport -GridName 'GridSessions' -Format csv -Title 'Gebruikers en sessies' -BaseName 'fslogix-sessies' })
+$script:Ui.BtnSesCsv.Add_Click({ Invoke-FslUiExport -GridName 'GridSessions' -Format csv -Title 'Users and sessions' -BaseName 'fslogix-sessions' })
 $script:Ui.BtnSesCopy.Add_Click({ Copy-FslUiText -Text (Get-FslUiGridText 'GridSessions') })
 # containers
 $ctViews = @{ RbCtMain = 'GridContainers'; RbCtVol = 'GridVolumes'; RbCtSmb = 'GridSmb'; RbCtProf = 'GridProfiles'; RbCtRaw = 'TxtFrxRaw' }
@@ -192,20 +192,20 @@ $script:Ui.BtnEvDetail.Add_Click({ Show-FslUiEventDetail })
 $script:Ui.GridEvents.Add_MouseDoubleClick({ Show-FslUiEventDetail })
 $script:Ui.BtnEvCopy.Add_Click({
         $r = @(Get-FslUiSelectedRows 'GridEvents')
-        if ($r.Count -eq 0) { Show-FslUiMessage 'Selecteer eerst een event.'; return }
+        if ($r.Count -eq 0) { Show-FslUiMessage 'Select an event first.'; return }
         Copy-FslUiText -Text (($r | ForEach-Object { "$($_.Row['Time']) [$($_.Row['LogName'])] $($_.Row['Provider']) ID $($_.Row['EventId']) $($_.Row['Level'])`r`n$($_.Row['Message'])" }) -join "`r`n`r`n")
     })
 $script:Ui.BtnEvCsv.Add_Click({ Invoke-FslUiExport -GridName 'GridEvents' -Format csv -Title 'Events' -BaseName 'fslogix-events' })
 $script:Ui.BtnEvMarks.Add_Click({
-        $res = Show-FslUiEditWindow -Title 'Gemarkeerde Event ID''s' -Intro 'Kommagescheiden lijst met Event ID''s die in de eventlijst worden gemarkeerd. Wordt opgeslagen in het lokale JSON-configuratiebestand.' -Initial ($script:Config.MarkedEventIds -join ', ')
+        $res = Show-FslUiEditWindow -Title 'Marked Event IDs' -Intro 'Comma-separated list of Event IDs to highlight in the event list. Saved in the local JSON configuration file.' -Initial ($script:Config.MarkedEventIds -join ', ')
         if ($null -eq $res) { return }
-        $ids = @(); foreach ($p in ($res -split '[,;\s]+')) { if ($p) { $n = 0; if ([int]::TryParse($p, [ref]$n) -and $n -gt 0 -and $n -lt 65536) { $ids += $n } else { Show-FslUiMessage "'$p' is geen geldig Event ID." 'FSL Master' 'Warning'; return } } }
+        $ids = @(); foreach ($p in ($res -split '[,;\s]+')) { if ($p) { $n = 0; if ([int]::TryParse($p, [ref]$n) -and $n -gt 0 -and $n -lt 65536) { $ids += $n } else { Show-FslUiMessage "'$p' is not a valid Event ID." 'FSL Master' 'Warning'; return } } }
         $script:Config.MarkedEventIds = $ids
         $saved = Save-FslConfig -Config $script:Config
-        Write-FslLog -Level ACTION -Message "Gemarkeerde Event ID's bijgewerkt: $($ids -join ',') (opgeslagen: $saved)"
-        if ($script:Snap -and $script:Snap.Events) { foreach ($r in $script:Snap.Events.Rows) { $r.Marked = [bool]($ids -contains $r.EventId); $r.MarkedText = $(if ($r.Marked) { 'Ja' } else { '' }) } }
+        Write-FslLog -Level ACTION -Message "Marked Event IDs updated: $($ids -join ',') (saved: $saved)"
+        if ($script:Snap -and $script:Snap.Events) { foreach ($r in $script:Snap.Events.Rows) { $r.Marked = [bool]($ids -contains $r.EventId); $r.MarkedText = $(if ($r.Marked) { 'Yes' } else { '' }) } }
         Update-FslUiEvents
-        if (-not $saved) { Show-FslUiMessage 'De lijst is bijgewerkt voor deze sessie maar kon niet naar het configuratiebestand worden geschreven.' 'FSL Master' 'Warning' }
+        if (-not $saved) { Show-FslUiMessage 'The list was updated for this session but could not be written to the configuration file.' 'FSL Master' 'Warning' }
     })
 # logs
 $script:Ui.BtnLogRefresh.Add_Click({ Update-FslUiLogFileList })
@@ -213,20 +213,20 @@ $script:Ui.BtnLogLoad.Add_Click({ Open-FslUiLogFile })
 $script:Ui.GridLogFiles.Add_MouseDoubleClick({ Open-FslUiLogFile })
 $script:Ui.DpLogDate.Add_SelectedDateChanged({ if ($script:UiReady) { Update-FslUiLogFileList } })
 $script:Ui.BtnLogDateClear.Add_Click({ $script:Ui.DpLogDate.SelectedDate = $null })
-$script:Ui.BtnLogCopy.Add_Click({ $r = @(Get-FslUiSelectedRows 'GridLogLines'); if ($r.Count -eq 0) { Show-FslUiMessage 'Selecteer eerst een of meer regels.'; return }; Copy-FslUiText -Text (($r | ForEach-Object { "$($_.Row['Text'])" }) -join "`r`n") })
+$script:Ui.BtnLogCopy.Add_Click({ $r = @(Get-FslUiSelectedRows 'GridLogLines'); if ($r.Count -eq 0) { Show-FslUiMessage 'Select one or more lines first.'; return }; Copy-FslUiText -Text (($r | ForEach-Object { "$($_.Row['Text'])" }) -join "`r`n") })
 $script:Ui.BtnLogExport.Add_Click({
         try {
             $r = @(Get-FslUiSelectedRows 'GridLogLines')
             $lines = if ($r.Count -gt 0) { @($r | ForEach-Object { "$($_.Row['Text'])" }) } else { @($script:LogShown | ForEach-Object { $_.Text }) }
-            if ($lines.Count -eq 0) { Show-FslUiMessage 'Er zijn geen regels om te exporteren.'; return }
-            $f = Get-FslUiSaveFile -Filter 'Tekst (*.txt)|*.txt|Log (*.log)|*.log' -DefaultName ("logfragment-$((Get-Date).ToString('yyyyMMdd-HHmm')).txt")
+            if ($lines.Count -eq 0) { Show-FslUiMessage 'There are no lines to export.'; return }
+            $f = Get-FslUiSaveFile -Filter 'Text (*.txt)|*.txt|Log (*.log)|*.log' -DefaultName ("logfragment-$((Get-Date).ToString('yyyyMMdd-HHmm')).txt")
             if (-not $f) { return }
             $v = Test-FslExportPath -Path $f -AllowedExtensions @('.txt', '.log')
             if (-not $v.Valid) { Show-FslUiMessage $v.Reason 'FSL Master' 'Warning'; return }
             Write-FslFileUtf8 -Path $v.Path -Content ($lines -join "`r`n")
-            Write-FslLog -Level ACTION -Message "Logfragment geëxporteerd: $($v.Path) ($($lines.Count) regels)"
-            $script:Ui.TxtStatus.Text = "Logfragment geschreven: $($v.Path)"
-        } catch { Show-FslUiError -Short "Exporteren mislukt: $($_.Exception.Message)" -Detail ($_ | Out-String) }
+            Write-FslLog -Level ACTION -Message "Log fragment exported: $($v.Path) ($($lines.Count) lines)"
+            $script:Ui.TxtStatus.Text = "Log fragment written: $($v.Path)"
+        } catch { Show-FslUiError -Short "Export failed: $($_.Exception.Message)" -Detail ($_ | Out-String) }
     })
 # health + report
 $script:Ui.BtnHealthCsv.Add_Click({ Invoke-FslUiExport -GridName 'GridHealth' -Format csv -Title 'Health check' -BaseName 'fslogix-health' })
@@ -240,10 +240,10 @@ $script:Ui.BtnRepTxt.Add_Click({ Invoke-FslUiReport -Format txt })
 $win.Dispatcher.Add_UnhandledException({
         $ex = $args[1].Exception
         $args[1].Handled = $true
-        Write-FslLog -Level ERROR -Message 'Onverwachte exceptie in de UI' -Exception $ex
-        try { Show-FslUiError -Short 'Er is een onverwachte fout opgetreden. De applicatie blijft draaien.' -Detail ($ex | Out-String) } catch { }
+        Write-FslLog -Level ERROR -Message 'Unexpected exception in the UI' -Exception $ex
+        try { Show-FslUiError -Short 'An unexpected error occurred. The application keeps running.' -Detail ($ex | Out-String) } catch { }
     })
-$win.Add_Closing({ try { $script:AutoTimer.Stop(); $script:JobTimer.Stop(); Write-FslLog -Level INFO -Message 'Applicatie afgesloten' } catch { } })
+$win.Add_Closing({ try { $script:AutoTimer.Stop(); $script:JobTimer.Stop(); Write-FslLog -Level INFO -Message 'Application closed' } catch { } })
 
 # ---------------------------------------------------------------- developer screenshot mode
 function Invoke-FslUiDoEvents { $win.Dispatcher.Invoke([Windows.Threading.DispatcherPriority]::Background, [Action]{ }) }
@@ -271,7 +271,7 @@ if ($CaptureScreenshots) {
         Save-FslUiScreenshot -Path (Join-Path $CaptureScreenshots '11-dashboard-light.png')
         $script:Ui.NavHealth.IsChecked = $true; Wait-FslUiIdle -Ms 700
         Save-FslUiScreenshot -Path (Join-Path $CaptureScreenshots '12-health-light.png')
-        Write-FslLog -Level INFO -Message "Screenshots geschreven naar $CaptureScreenshots"
+        Write-FslLog -Level INFO -Message "Screenshots written to $CaptureScreenshots"
         $win.Close()
     }
 }

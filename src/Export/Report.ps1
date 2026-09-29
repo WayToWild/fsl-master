@@ -92,7 +92,7 @@ function Get-FslReportData {
         Containers = @(ConvertTo-FslPlainRows -Rows $(if ($Snapshot.Containers) { $Snapshot.Containers.Rows } else { @() }) -Properties 'User', 'Sid', 'SessionId', 'RedirectType', 'ContainerPath', 'VhdFile', 'FileServer', 'Share', 'SizeText', 'LastWrite', 'Volume', 'StatusText', 'Warnings')
         Events = @(ConvertTo-FslPlainRows -Rows @($(if ($Snapshot.Events) { $Snapshot.Events.Rows | Where-Object { $_.LevelNumber -le 3 -or $_.Marked } | Select-Object -First 200 })) -Properties 'Time', 'LogName', 'Provider', 'EventId', 'Level', 'User', 'Summary')
         Health = @(ConvertTo-FslPlainRows -Rows $Snapshot.Health -Properties 'Category', 'Check', 'StatusText', 'Result', 'Evidence', 'Recommendation', 'Time')
-        Score = if ($Snapshot.Score) { [pscustomobject]@{ Score = $(if ($null -ne $Snapshot.Score.Score) { $Snapshot.Score.Score } else { 'Onbekend' }); Status = (Get-FslStatusText $Snapshot.Score.Status); Scored = $Snapshot.Score.Scored; Unknown = $Snapshot.Score.Unknown; Errors = $Snapshot.Score.Errors; Warnings = $Snapshot.Score.Warnings; CoveragePercent = $Snapshot.Score.Coverage } } else { $null }
+        Score = if ($Snapshot.Score) { [pscustomobject]@{ Score = $(if ($null -ne $Snapshot.Score.Score) { $Snapshot.Score.Score } else { 'Unknown' }); Status = (Get-FslStatusText $Snapshot.Score.Status); Scored = $Snapshot.Score.Scored; Unknown = $Snapshot.Score.Unknown; Errors = $Snapshot.Score.Errors; Warnings = $Snapshot.Score.Warnings; CoveragePercent = $Snapshot.Score.Coverage } } else { $null }
         Recommendations = @(Get-FslRecommendations -Health $Snapshot.Health)
     }
     if ($Sanitized) {
@@ -111,7 +111,7 @@ function Write-FslFileUtf8 {
 function ConvertTo-FslHtmlTable {
     param($Rows, [string[]]$Columns)
     $rowsArr = @($Rows | Where-Object { $null -ne $_ })
-    if ($rowsArr.Count -eq 0) { return '<p class="muted">Geen gegevens.</p>' }
+    if ($rowsArr.Count -eq 0) { return '<p class="muted">No data.</p>' }
     if (-not $Columns) { $Columns = $rowsArr[0].PSObject.Properties.Name }
     $sb = New-Object Text.StringBuilder
     [void]$sb.Append('<table><thead><tr>')
@@ -123,8 +123,8 @@ function ConvertTo-FslHtmlTable {
             $v = Format-FslValue $r.$c
             $cls = ''
             if ($c -in 'StatusText', 'Status', 'ContainerStatus') {
-                $cls = switch -Wildcard ($v) { 'Gezond' { ' class="ok"' } 'Waarschuwing' { ' class="warn"' } 'Fout' { ' class="err"' } default { ' class="unk"' } }
-                $glyph = switch ($v) { 'Gezond' { [string][char]0x2714 } 'Waarschuwing' { [string][char]0x26A0 } 'Fout' { [string][char]0x2716 } default { '?' } }
+                $cls = switch -Wildcard ($v) { 'Healthy' { ' class="ok"' } 'Warning' { ' class="warn"' } 'Error' { ' class="err"' } default { ' class="unk"' } }
+                $glyph = switch ($v) { 'Healthy' { [string][char]0x2714 } 'Warning' { [string][char]0x26A0 } 'Error' { [string][char]0x2716 } default { '?' } }
                 [void]$sb.Append("<td$cls>" + $glyph + ' ' + (ConvertTo-FslHtmlEncoded $v) + '</td>')
             } else { [void]$sb.Append('<td>' + (ConvertTo-FslHtmlEncoded $v) + '</td>') }
         }
@@ -138,7 +138,7 @@ function ConvertTo-FslHtmlDocument {
     param([string]$Title, [string]$Body)
     @"
 <!DOCTYPE html>
-<html lang="nl"><head><meta charset="utf-8"><title>$(ConvertTo-FslHtmlEncoded $Title)</title>
+<html lang="en"><head><meta charset="utf-8"><title>$(ConvertTo-FslHtmlEncoded $Title)</title>
 <style>
 body{font-family:Segoe UI,Arial,sans-serif;margin:24px;color:#1b1b1b;background:#fff}
 h1{font-size:22px;margin-bottom:2px}h2{font-size:16px;margin-top:28px;border-bottom:1px solid #ccc;padding-bottom:4px}
@@ -156,24 +156,24 @@ function ConvertTo-FslReportHtml {
     param($Data)
     $sb = New-Object Text.StringBuilder
     $m = $Data.Meta
-    [void]$sb.Append("<h1>FSL Master - rapport</h1><p class=`"muted`">Local FSLogix diagnostics and monitoring for Azure Virtual Desktop &middot; versie $(ConvertTo-FslHtmlEncoded $m.Version) &middot; gegenereerd op $(ConvertTo-FslHtmlEncoded $m.Generated)$(if ($m.Sanitized) { ' &middot; <strong>SANITIZED REPORT</strong>' })</p>")
+    [void]$sb.Append("<h1>FSL Master - report</h1><p class=`"muted`">Local FSLogix diagnostics and monitoring for Azure Virtual Desktop &middot; version $(ConvertTo-FslHtmlEncoded $m.Version) &middot; generated on $(ConvertTo-FslHtmlEncoded $m.Generated)$(if ($m.Sanitized) { ' &middot; <strong>SANITIZED REPORT</strong>' })</p>")
     if ($Data.Score) {
         $s = $Data.Score
-        [void]$sb.Append("<h2>Gezondheidsscore</h2><p><span class=`"score`">$(ConvertTo-FslHtmlEncoded $s.Score)</span> / 100 &mdash; $(ConvertTo-FslHtmlEncoded $s.Status) ($(ConvertTo-FslHtmlEncoded $s.Errors) fout(en), $(ConvertTo-FslHtmlEncoded $s.Warnings) waarschuwing(en), $(ConvertTo-FslHtmlEncoded $s.Unknown) onbekend; dekking $(ConvertTo-FslHtmlEncoded $s.CoveragePercent)%)</p>")
+        [void]$sb.Append("<h2>Health score</h2><p><span class=`"score`">$(ConvertTo-FslHtmlEncoded $s.Score)</span> / 100 &mdash; $(ConvertTo-FslHtmlEncoded $s.Status) ($(ConvertTo-FslHtmlEncoded $s.Errors) error(s), $(ConvertTo-FslHtmlEncoded $s.Warnings) warning(s), $(ConvertTo-FslHtmlEncoded $s.Unknown) unknown; coverage $(ConvertTo-FslHtmlEncoded $s.CoveragePercent)%)</p>")
     }
-    [void]$sb.Append('<h2>Hostinformatie</h2>' + (ConvertTo-FslHtmlTable -Rows @($Data.Host)))
-    [void]$sb.Append('<h2>Windows en AVD</h2>' + (ConvertTo-FslHtmlTable -Rows @($Data.Windows)))
+    [void]$sb.Append('<h2>Host information</h2>' + (ConvertTo-FslHtmlTable -Rows @($Data.Host)))
+    [void]$sb.Append('<h2>Windows and AVD</h2>' + (ConvertTo-FslHtmlTable -Rows @($Data.Windows)))
     [void]$sb.Append('<h2>FSLogix</h2>' + (ConvertTo-FslHtmlTable -Rows @($Data.FSLogix)))
-    [void]$sb.Append('<h2>Services en componenten</h2>' + (ConvertTo-FslHtmlTable -Rows $Data.Services))
-    [void]$sb.Append('<h2>Effectieve configuratie</h2>' + (ConvertTo-FslHtmlTable -Rows $Data.Configuration))
-    [void]$sb.Append('<h2>Gebruikers en sessies</h2>' + (ConvertTo-FslHtmlTable -Rows $Data.Sessions))
+    [void]$sb.Append('<h2>Services and components</h2>' + (ConvertTo-FslHtmlTable -Rows $Data.Services))
+    [void]$sb.Append('<h2>Effective configuration</h2>' + (ConvertTo-FslHtmlTable -Rows $Data.Configuration))
+    [void]$sb.Append('<h2>Users and sessions</h2>' + (ConvertTo-FslHtmlTable -Rows $Data.Sessions))
     [void]$sb.Append('<h2>Containers</h2>' + (ConvertTo-FslHtmlTable -Rows $Data.Containers))
-    [void]$sb.Append("<h2>Recente relevante events (periode: $(ConvertTo-FslHtmlEncoded $m.PeriodHours) uur)</h2>" + (ConvertTo-FslHtmlTable -Rows $Data.Events))
-    [void]$sb.Append('<h2>Health-checkresultaten</h2>' + (ConvertTo-FslHtmlTable -Rows $Data.Health))
-    [void]$sb.Append('<h2>Technische aanbevelingen</h2>')
+    [void]$sb.Append("<h2>Recent relevant events (period: $(ConvertTo-FslHtmlEncoded $m.PeriodHours) hours)</h2>" + (ConvertTo-FslHtmlTable -Rows $Data.Events))
+    [void]$sb.Append('<h2>Health check results</h2>' + (ConvertTo-FslHtmlTable -Rows $Data.Health))
+    [void]$sb.Append('<h2>Technical recommendations</h2>')
     if (@($Data.Recommendations).Count -gt 0) { [void]$sb.Append('<ul>' + (($Data.Recommendations | ForEach-Object { '<li>' + (ConvertTo-FslHtmlEncoded $_) + '</li>' }) -join '') + '</ul>') }
-    else { [void]$sb.Append('<p class="muted">Geen aanbevelingen.</p>') }
-    ConvertTo-FslHtmlDocument -Title 'FSL Master rapport' -Body $sb.ToString()
+    else { [void]$sb.Append('<p class="muted">No recommendations.</p>') }
+    ConvertTo-FslHtmlDocument -Title 'FSL Master report' -Body $sb.ToString()
 }
 
 function ConvertTo-FslReportText {
@@ -181,27 +181,27 @@ function ConvertTo-FslReportText {
     $sb = New-Object Text.StringBuilder
     $line = '=' * 78
     $m = $Data.Meta
-    [void]$sb.AppendLine("FSL Master - rapport (versie $($m.Version))")
-    [void]$sb.AppendLine("Gegenereerd op: $($m.Generated)$(if ($m.Sanitized) { '  [SANITIZED]' })")
+    [void]$sb.AppendLine("FSL Master - report (version $($m.Version))")
+    [void]$sb.AppendLine("Generated on: $($m.Generated)$(if ($m.Sanitized) { '  [SANITIZED]' })")
     [void]$sb.AppendLine($line)
-    if ($Data.Score) { [void]$sb.AppendLine("Gezondheidsscore: $($Data.Score.Score) / 100 - $($Data.Score.Status) (dekking $($Data.Score.CoveragePercent)%)") }
+    if ($Data.Score) { [void]$sb.AppendLine("Health score: $($Data.Score.Score) / 100 - $($Data.Score.Status) (coverage $($Data.Score.CoveragePercent)%)") }
     $section = {
         param($title, $rows)
         [void]$sb.AppendLine(''); [void]$sb.AppendLine($title); [void]$sb.AppendLine('-' * $title.Length)
         $arr = @($rows)
-        if ($arr.Count -eq 0 -or $null -eq $arr[0]) { [void]$sb.AppendLine('  (geen gegevens)') }
+        if ($arr.Count -eq 0 -or $null -eq $arr[0]) { [void]$sb.AppendLine('  (no data)') }
         foreach ($r in $arr) { if ($null -eq $r) { continue }; [void]$sb.AppendLine(('  ' + (($r.PSObject.Properties | ForEach-Object { "$($_.Name)=$(Format-FslValue $_.Value)" }) -join ' | '))) }
     }
     & $section 'Host' @($Data.Host)
     & $section 'Windows en AVD' @($Data.Windows)
     & $section 'FSLogix' @($Data.FSLogix)
     & $section 'Services' $Data.Services
-    & $section 'Configuratie' $Data.Configuration
-    & $section 'Sessies' $Data.Sessions
+    & $section 'Configuration' $Data.Configuration
+    & $section 'Sessions' $Data.Sessions
     & $section 'Containers' $Data.Containers
     & $section 'Events' $Data.Events
     & $section 'Health checks' $Data.Health
-    [void]$sb.AppendLine(''); [void]$sb.AppendLine('Aanbevelingen'); [void]$sb.AppendLine('-------------')
+    [void]$sb.AppendLine(''); [void]$sb.AppendLine('Recommendations'); [void]$sb.AppendLine('-------------')
     foreach ($r in @($Data.Recommendations)) { [void]$sb.AppendLine("  * $r") }
     $sb.ToString()
 }
@@ -215,9 +215,9 @@ function Export-FslRows {
     switch ($Format) {
         'csv' { $plain | Export-Csv -LiteralPath $v.Path -NoTypeInformation -Encoding UTF8 }
         'json' { Write-FslFileUtf8 -Path $v.Path -Content (ConvertTo-Json -InputObject $plain -Depth 4) }
-        'html' { Write-FslFileUtf8 -Path $v.Path -Content (ConvertTo-FslHtmlDocument -Title $Title -Body ("<h1>$(ConvertTo-FslHtmlEncoded $Title)</h1><p class=`"muted`">Gegenereerd op $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')</p>" + (ConvertTo-FslHtmlTable -Rows $plain))) }
+        'html' { Write-FslFileUtf8 -Path $v.Path -Content (ConvertTo-FslHtmlDocument -Title $Title -Body ("<h1>$(ConvertTo-FslHtmlEncoded $Title)</h1><p class=`"muted`">Generated on $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')</p>" + (ConvertTo-FslHtmlTable -Rows $plain))) }
     }
-    Write-FslLog -Level ACTION -Message "Export ($Format) geschreven: $($v.Path)"
+    Write-FslLog -Level ACTION -Message "Export ($Format) written: $($v.Path)"
     $v.Path
 }
 
@@ -242,6 +242,6 @@ function Export-FslReport {
             }
         }
     }
-    Write-FslLog -Level ACTION -Message "Rapport ($Format, sanitized=$([bool]$Sanitized)) geschreven: $($written -join ', ')"
+    Write-FslLog -Level ACTION -Message "Report ($Format, sanitized=$([bool]$Sanitized)) written: $($written -join ', ')"
     $written
 }

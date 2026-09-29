@@ -201,17 +201,17 @@ function Get-FslSessions {
         $profNote = ''
         $status = 'OK'
         if ($prof) {
-            if ($prof.Status -band 1) { $profNote = 'Tijdelijk profiel'; $status = 'Error' }
-            elseif ($prof.Status -band 8) { $profNote = 'Beschadigd profiel'; $status = 'Error' }
-            if ($prof.LocalPath -match '\.bak$|\\TEMP(\.|$)') { $profNote = 'Mogelijk tijdelijk profiel (pad)'; $status = 'Warning' }
-        } else { $profNote = 'Profiel niet gevonden'; $status = 'Unknown' }
+            if ($prof.Status -band 1) { $profNote = 'Temporary profile'; $status = 'Error' }
+            elseif ($prof.Status -band 8) { $profNote = 'Corrupt profile'; $status = 'Error' }
+            if ($prof.LocalPath -match '\.bak$|\\TEMP(\.|$)') { $profNote = 'Possible temporary profile (path)'; $status = 'Warning' }
+        } else { $profNote = 'Profile not found'; $status = 'Unknown' }
         $rows.Add([pscustomobject]@{
             User = $s.User; Domain = $s.Domain; Sid = $sid; SessionId = $s.SessionId; State = $s.State
             LogonTime = $logon; Idle = $s.Idle; IdleText = $(if ($s.Idle) { Format-FslTimeSpan $s.Idle } else { '' })
             Client = $s.Client; WinStation = $s.WinStation
-            ProfilePath = $(if ($prof) { $prof.LocalPath } else { '' }); ProfileLoaded = $(if ($prof -and $null -ne $prof.Loaded) { $(if ($prof.Loaded) { 'Ja' } else { 'Nee' }) } else { '' })
+            ProfilePath = $(if ($prof) { $prof.LocalPath } else { '' }); ProfileLoaded = $(if ($prof -and $null -ne $prof.Loaded) { $(if ($prof.Loaded) { 'Yes' } else { 'No' }) } else { '' })
             ProfileNote = $profNote
-            ContainerMounted = 'Onbekend'; ContainerType = ''; ContainerPath = ''; VhdFile = ''; ContainerStatus = ''
+            ContainerMounted = 'Unknown'; ContainerType = ''; ContainerPath = ''; VhdFile = ''; ContainerStatus = ''
             Status = $status; StatusText = (Get-FslStatusText $status); Glyph = (Get-FslStatusGlyph $status); Source = $s.Source
         })
     }
@@ -219,13 +219,13 @@ function Get-FslSessions {
 }
 
 function Merge-FslSessionContainers {
-    # Adds container info to sessions. Mounted = Ja / Nee / Onbekend.
+    # Adds container info to sessions. Mounted = Ja / Nee / Unknown.
     param($Sessions, $Containers, [bool]$FslogixInstalled, [bool]$ProfilesEnabled, [bool]$ContainerDataAvailable)
     foreach ($s in @($Sessions)) {
         $match = @()
         if ($Containers) { $match = @($Containers | Where-Object { ($s.Sid -and $_.Sid -eq $s.Sid) -or ($_.User -and $s.User -and ($_.User -split '\\')[-1] -ieq $s.User) }) }
         if ($match.Count -gt 0) {
-            $s.ContainerMounted = 'Ja'
+            $s.ContainerMounted = 'Yes'
             $s.ContainerType = (($match | ForEach-Object { $_.RedirectType } | Where-Object { $_ } | Select-Object -Unique) -join ', ')
             $s.ContainerPath = (($match | ForEach-Object { $_.ContainerPath } | Where-Object { $_ } | Select-Object -Unique) -join '; ')
             $s.VhdFile = (($match | ForEach-Object { $_.VhdFile } | Where-Object { $_ } | Select-Object -Unique) -join '; ')
@@ -234,11 +234,11 @@ function Merge-FslSessionContainers {
             $s.ContainerStatus = Get-FslStatusText $worst
             if ($worst -eq 'Error' -and $s.Status -ne 'Error') { $s.Status = 'Error' } elseif ($worst -eq 'Warning' -and $s.Status -eq 'OK') { $s.Status = 'Warning' }
         } elseif ($FslogixInstalled -and $ProfilesEnabled -and $ContainerDataAvailable) {
-            $s.ContainerMounted = 'Nee'; $s.ContainerStatus = 'Geen container gevonden'
+            $s.ContainerMounted = 'No'; $s.ContainerStatus = 'No container found'
             if ($s.Status -eq 'OK') { $s.Status = 'Warning' }
         } else {
-            $s.ContainerMounted = 'Onbekend'
-            $s.ContainerStatus = if (-not $FslogixInstalled) { 'FSLogix niet geïnstalleerd' } elseif (-not $ProfilesEnabled) { 'Profile Containers niet ingeschakeld' } else { 'Geen containergegevens' }
+            $s.ContainerMounted = 'Unknown'
+            $s.ContainerStatus = if (-not $FslogixInstalled) { 'FSLogix not installed' } elseif (-not $ProfilesEnabled) { 'Profile Containers not enabled' } else { 'No container data' }
         }
         $s.StatusText = Get-FslStatusText $s.Status
         $s.Glyph = Get-FslStatusGlyph $s.Status

@@ -50,26 +50,26 @@ function Start-FslUiJob {
     foreach ($a in $ArgumentList) { $null = $ps.AddArgument($a) }
     $handle = $ps.BeginInvoke()
     [void]$script:Jobs.Add(@{ PS = $ps; RS = $rs; Handle = $handle; OnDone = $OnDone; Name = $Name })
-    Write-FslLog -Level INFO -Message "Achtergrondtaak gestart: $Name"
+    Write-FslLog -Level INFO -Message "Background job started: $Name"
 }
 
 function Invoke-FslUiJobPoll {
     if ($script:Refreshing -and $script:Sync) {
-        $script:Ui.TxtStatus.Text = "Controleren: $($script:Sync.Step)"
+        $script:Ui.TxtStatus.Text = "Checking: $($script:Sync.Step)"
         $script:Ui.PbRefresh.Value = [double]$script:Sync.Progress
     }
     foreach ($job in @($script:Jobs.ToArray())) {
         if (-not $job.Handle.IsCompleted) { continue }
         [void]$script:Jobs.Remove($job)
-        Write-FslLog -Level INFO -Message "Achtergrondtaak gereed: $($job.Name)"
+        Write-FslLog -Level INFO -Message "Background job finished: $($job.Name)"
         $results = @(); $errs = @()
         try { $results = @($job.PS.EndInvoke($job.Handle)) } catch { $errs += $_.Exception.Message }
         foreach ($e in $job.PS.Streams.Error) { $errs += "$e" }
         try { $job.PS.Dispose(); $job.RS.Dispose() } catch { }
         if ($job.OnDone) {
             try { & $job.OnDone $results $errs } catch {
-                Write-FslLog -Level ERROR -Message "Fout in afhandeling van taak '$($job.Name)'" -Exception $_
-                Show-FslUiError -Short 'Er is een fout opgetreden bij het verwerken van de resultaten.' -Detail ($_ | Out-String)
+                Write-FslLog -Level ERROR -Message "Error handling job '$($job.Name)'" -Exception $_
+                Show-FslUiError -Short 'An error occurred while processing the results.' -Detail ($_ | Out-String)
             }
         }
     }
@@ -82,14 +82,14 @@ function Show-FslUiMessage {
 }
 
 function Confirm-FslUiAction {
-    param([string]$Text, [string]$Title = 'Bevestig beheeractie')
+    param([string]$Text, [string]$Title = 'Confirm management action')
     ([Windows.MessageBox]::Show($Text, $Title, 'YesNo', 'Warning', 'No') -eq 'Yes')
 }
 
 function Copy-FslUiText {
     param([string]$Text)
     if ([string]::IsNullOrEmpty($Text)) { return }
-    try { [Windows.Clipboard]::SetText($Text) } catch { Start-Sleep -Milliseconds 100; try { [Windows.Clipboard]::SetText($Text) } catch { Show-FslUiMessage 'Kopieren naar het klembord is mislukt.' 'FSL Master' 'Warning' } }
+    try { [Windows.Clipboard]::SetText($Text) } catch { Start-Sleep -Milliseconds 100; try { [Windows.Clipboard]::SetText($Text) } catch { Show-FslUiMessage 'Copying to the clipboard failed.' 'FSL Master' 'Warning' } }
 }
 
 function Show-FslUiTextWindow {
@@ -101,8 +101,8 @@ function Show-FslUiTextWindow {
     <TextBlock x:Name="Intro" TextWrapping="Wrap" Margin="0,0,0,8"/>
     <TextBox x:Name="Body" Grid.Row="1" IsReadOnly="True" FontFamily="Consolas" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" AcceptsReturn="True"/>
     <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,8,0,0">
-      <Button x:Name="Copy" Content="Kopieer" Padding="14,4" Margin="0,0,8,0"/>
-      <Button x:Name="Close" Content="Sluiten" Padding="14,4" IsDefault="True"/>
+      <Button x:Name="Copy" Content="Copy" Padding="14,4" Margin="0,0,8,0"/>
+      <Button x:Name="Close" Content="Close" Padding="14,4" IsDefault="True"/>
     </StackPanel>
   </Grid>
 </Window>
@@ -121,7 +121,7 @@ function Show-FslUiTextWindow {
 function Show-FslUiError {
     param([string]$Short, [string]$Detail)
     Write-FslLog -Level ERROR -Message $Short -Exception $Detail
-    try { Show-FslUiTextWindow -Title 'Fout' -Text $Detail -Intro $Short } catch { [void][Windows.MessageBox]::Show($Short, 'FSL Master', 'OK', 'Error') }
+    try { Show-FslUiTextWindow -Title 'Error' -Text $Detail -Intro $Short } catch { [void][Windows.MessageBox]::Show($Short, 'FSL Master', 'OK', 'Error') }
 }
 
 function Show-FslUiEditWindow {
@@ -133,8 +133,8 @@ function Show-FslUiEditWindow {
     <TextBlock x:Name="Intro" TextWrapping="Wrap" Margin="0,0,0,8"/>
     <TextBox x:Name="Body" Grid.Row="1" TextWrapping="Wrap" AcceptsReturn="True" VerticalScrollBarVisibility="Auto"/>
     <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,8,0,0">
-      <Button x:Name="Ok" Content="Opslaan" Padding="14,4" Margin="0,0,8,0" IsDefault="True"/>
-      <Button x:Name="Cancel" Content="Annuleren" Padding="14,4" IsCancel="True"/>
+      <Button x:Name="Ok" Content="Save" Padding="14,4" Margin="0,0,8,0" IsDefault="True"/>
+      <Button x:Name="Cancel" Content="Cancel" Padding="14,4" IsCancel="True"/>
     </StackPanel>
   </Grid>
 </Window>
@@ -227,48 +227,48 @@ function New-FslUiStatusColumn {
 function Get-FslUiGridSpecs {
     @{
         GridConfig     = @(
-            @{ H = 'Scope'; P = 'Scope'; W = 80 }, @{ H = 'Instelling'; P = 'Name'; W = 230 }, @{ H = 'Effectieve waarde'; P = 'Value'; W = 260 },
-            @{ H = 'Gegevensbron'; P = 'Source'; W = 120 }, @{ S = $true; H = 'Beoordeling'; W = 135 }, @{ H = 'Toelichting'; P = 'Assessment'; W = 340 },
-            @{ H = 'Default'; P = 'Default'; W = 80 }, @{ H = 'Registerpad'; P = 'RegistryPath'; W = 320 }, @{ H = 'Uitleg'; P = 'Description'; W = 420 })
+            @{ H = 'Scope'; P = 'Scope'; W = 80 }, @{ H = 'Setting'; P = 'Name'; W = 230 }, @{ H = 'Effective value'; P = 'Value'; W = 260 },
+            @{ H = 'Data source'; P = 'Source'; W = 120 }, @{ S = $true; H = 'Assessment'; W = 135 }, @{ H = 'Notes'; P = 'Assessment'; W = 340 },
+            @{ H = 'Default'; P = 'Default'; W = 80 }, @{ H = 'Registry path'; P = 'RegistryPath'; W = 320 }, @{ H = 'Description'; P = 'Description'; W = 420 })
         GridServices   = @(
-            @{ S = $true; H = 'Status'; W = 135 }, @{ H = 'Type'; P = 'Kind'; W = 80 }, @{ H = 'Naam'; P = 'Name'; W = 120 }, @{ H = 'Weergavenaam'; P = 'DisplayName'; W = 200 },
-            @{ H = 'Status (service)'; P = 'State'; W = 110 }, @{ H = 'Starttype'; P = 'StartMode'; W = 90 }, @{ H = 'Versie'; P = 'Version'; W = 130 },
-            @{ H = 'Proces'; P = 'Process'; W = 80 }, @{ H = 'Toelichting'; P = 'Note'; W = 300 }, @{ H = 'Pad'; P = 'Path'; W = 380 })
+            @{ S = $true; H = 'Status'; W = 135 }, @{ H = 'Type'; P = 'Kind'; W = 80 }, @{ H = 'Name'; P = 'Name'; W = 120 }, @{ H = 'Display name'; P = 'DisplayName'; W = 200 },
+            @{ H = 'Status (service)'; P = 'State'; W = 110 }, @{ H = 'Start type'; P = 'StartMode'; W = 90 }, @{ H = 'Version'; P = 'Version'; W = 130 },
+            @{ H = 'Process'; P = 'Process'; W = 80 }, @{ H = 'Notes'; P = 'Note'; W = 300 }, @{ H = 'Path'; P = 'Path'; W = 380 })
         GridSessions   = @(
-            @{ S = $true; H = 'Status'; W = 135 }, @{ H = 'Gebruiker'; P = 'User'; W = 130 }, @{ H = 'Domein'; P = 'Domain'; W = 110 }, @{ H = 'SID'; P = 'Sid'; W = 250 },
-            @{ H = 'Sessie-ID'; P = 'SessionId'; W = 70 }, @{ H = 'Sessiestatus'; P = 'State'; W = 100 }, @{ H = 'Aanmeldtijd'; P = 'LogonTime'; W = 150; F = 'yyyy-MM-dd HH:mm:ss' },
-            @{ H = 'Inactief'; P = 'IdleText'; W = 90 }, @{ H = 'Profielpad'; P = 'ProfilePath'; W = 260 }, @{ H = 'Profielnotitie'; P = 'ProfileNote'; W = 160 },
-            @{ H = 'Container gekoppeld'; P = 'ContainerMounted'; W = 130 }, @{ H = 'Type'; P = 'ContainerType'; W = 90 }, @{ H = 'Containerpad'; P = 'ContainerPath'; W = 340 },
-            @{ H = 'VHD(X)-bestand'; P = 'VhdFile'; W = 200 }, @{ H = 'Containerstatus'; P = 'ContainerStatus'; W = 170 })
+            @{ S = $true; H = 'Status'; W = 135 }, @{ H = 'User'; P = 'User'; W = 130 }, @{ H = 'Domain'; P = 'Domain'; W = 110 }, @{ H = 'SID'; P = 'Sid'; W = 250 },
+            @{ H = 'Session ID'; P = 'SessionId'; W = 70 }, @{ H = 'Session state'; P = 'State'; W = 100 }, @{ H = 'Logon time'; P = 'LogonTime'; W = 150; F = 'yyyy-MM-dd HH:mm:ss' },
+            @{ H = 'Idle'; P = 'IdleText'; W = 90 }, @{ H = 'Profile path'; P = 'ProfilePath'; W = 260 }, @{ H = 'Profile note'; P = 'ProfileNote'; W = 160 },
+            @{ H = 'Container mounted'; P = 'ContainerMounted'; W = 130 }, @{ H = 'Type'; P = 'ContainerType'; W = 90 }, @{ H = 'Container path'; P = 'ContainerPath'; W = 340 },
+            @{ H = 'VHD(X) file'; P = 'VhdFile'; W = 200 }, @{ H = 'Container status'; P = 'ContainerStatus'; W = 170 })
         GridContainers = @(
-            @{ S = $true; H = 'Status'; W = 135 }, @{ H = 'Gebruiker'; P = 'User'; W = 150 }, @{ H = 'SID'; P = 'Sid'; W = 240 }, @{ H = 'Sessie-ID'; P = 'SessionId'; W = 70 },
-            @{ H = 'Type'; P = 'RedirectType'; W = 80 }, @{ H = 'Containerpad'; P = 'ContainerPath'; W = 360 }, @{ H = 'VHD(X)-bestand'; P = 'VhdFile'; W = 200 },
-            @{ H = 'Fileserver'; P = 'FileServer'; W = 140 }, @{ H = 'Share'; P = 'Share'; W = 110 }, @{ H = 'Grootte'; P = 'SizeText'; W = 90; M = 'SizeBytes' },
-            @{ H = 'Laatst gewijzigd'; P = 'LastWrite'; W = 150; F = 'yyyy-MM-dd HH:mm:ss' }, @{ H = 'Gekoppeld volume'; P = 'Volume'; W = 200 },
-            @{ H = 'Volume health'; P = 'VolumeHealth'; W = 100 }, @{ H = 'Netwerk'; P = 'Network'; W = 90 }, @{ H = 'Waarschuwingen'; P = 'Warnings'; W = 380 }, @{ H = 'Bron'; P = 'Source'; W = 160 })
+            @{ S = $true; H = 'Status'; W = 135 }, @{ H = 'User'; P = 'User'; W = 150 }, @{ H = 'SID'; P = 'Sid'; W = 240 }, @{ H = 'Session ID'; P = 'SessionId'; W = 70 },
+            @{ H = 'Type'; P = 'RedirectType'; W = 80 }, @{ H = 'Container path'; P = 'ContainerPath'; W = 360 }, @{ H = 'VHD(X) file'; P = 'VhdFile'; W = 200 },
+            @{ H = 'File server'; P = 'FileServer'; W = 140 }, @{ H = 'Share'; P = 'Share'; W = 110 }, @{ H = 'Size'; P = 'SizeText'; W = 90; M = 'SizeBytes' },
+            @{ H = 'Last modified'; P = 'LastWrite'; W = 150; F = 'yyyy-MM-dd HH:mm:ss' }, @{ H = 'Mounted volume'; P = 'Volume'; W = 200 },
+            @{ H = 'Volume health'; P = 'VolumeHealth'; W = 100 }, @{ H = 'Network'; P = 'Network'; W = 90 }, @{ H = 'Warnings'; P = 'Warnings'; W = 380 }, @{ H = 'Source'; P = 'Source'; W = 160 })
         GridVolumes    = @(
-            @{ H = 'Disk'; P = 'DiskNumber'; W = 50 }, @{ H = 'Label'; P = 'Label'; W = 180 }, @{ H = 'Station'; P = 'DriveLetter'; W = 60 }, @{ H = 'Type'; P = 'Type'; W = 80 },
-            @{ H = 'Gebruiker'; P = 'User'; W = 140 }, @{ H = 'Grootte'; P = 'SizeText'; W = 90; M = 'Size' }, @{ H = 'Vrij'; P = 'FreeText'; W = 90; M = 'Free' },
-            @{ H = 'Health'; P = 'Health'; W = 90 }, @{ H = 'Operationeel'; P = 'Operational'; W = 100 }, @{ H = 'Bestandssysteem'; P = 'FileSystem'; W = 110 }, @{ H = 'Volumepad'; P = 'Path'; W = 380 })
+            @{ H = 'Disk'; P = 'DiskNumber'; W = 50 }, @{ H = 'Label'; P = 'Label'; W = 180 }, @{ H = 'Drive'; P = 'DriveLetter'; W = 60 }, @{ H = 'Type'; P = 'Type'; W = 80 },
+            @{ H = 'User'; P = 'User'; W = 140 }, @{ H = 'Size'; P = 'SizeText'; W = 90; M = 'Size' }, @{ H = 'Free'; P = 'FreeText'; W = 90; M = 'Free' },
+            @{ H = 'Health'; P = 'Health'; W = 90 }, @{ H = 'Operational'; P = 'Operational'; W = 100 }, @{ H = 'File system'; P = 'FileSystem'; W = 110 }, @{ H = 'Volume path'; P = 'Path'; W = 380 })
         GridSmb        = @(
-            @{ H = 'Server'; P = 'Server'; W = 200 }, @{ H = 'Share'; P = 'Share'; W = 160 }, @{ H = 'Gebruiker'; P = 'UserName'; W = 200 }, @{ H = 'Dialect'; P = 'Dialect'; W = 80 },
-            @{ H = 'Open handles'; P = 'NumOpens'; W = 100 }, @{ H = 'Versleuteld'; P = 'Encrypted'; W = 90 })
+            @{ H = 'Server'; P = 'Server'; W = 200 }, @{ H = 'Share'; P = 'Share'; W = 160 }, @{ H = 'User'; P = 'UserName'; W = 200 }, @{ H = 'Dialect'; P = 'Dialect'; W = 80 },
+            @{ H = 'Open handles'; P = 'NumOpens'; W = 100 }, @{ H = 'Encrypted'; P = 'Encrypted'; W = 90 })
         GridProfiles   = @(
-            @{ H = 'Gebruiker'; P = 'User'; W = 200 }, @{ H = 'SID'; P = 'Sid'; W = 260 }, @{ H = 'Lokaal pad'; P = 'LocalPath'; W = 320 }, @{ H = 'Geladen'; P = 'Loaded'; W = 80 },
-            @{ H = 'Profielstatus'; P = 'ProfileStatus'; W = 100 }, @{ H = 'Laatst gebruikt'; P = 'LastUse'; W = 150; F = 'yyyy-MM-dd HH:mm:ss' })
+            @{ H = 'User'; P = 'User'; W = 200 }, @{ H = 'SID'; P = 'Sid'; W = 260 }, @{ H = 'Local path'; P = 'LocalPath'; W = 320 }, @{ H = 'Loaded'; P = 'Loaded'; W = 80 },
+            @{ H = 'Profile status'; P = 'ProfileStatus'; W = 100 }, @{ H = 'Last used'; P = 'LastUse'; W = 150; F = 'yyyy-MM-dd HH:mm:ss' })
         GridEvents     = @(
-            @{ H = 'Tijdstip'; P = 'Time'; W = 150; F = 'yyyy-MM-dd HH:mm:ss' }, @{ H = 'Niveau'; P = 'LevelDisplay'; W = 110; M = 'LevelNumber' }, @{ H = 'ID'; P = 'EventId'; W = 60 },
-            @{ H = 'Gemarkeerd'; P = 'MarkedText'; W = 90 }, @{ H = 'Log'; P = 'LogName'; W = 210 }, @{ H = 'Provider'; P = 'Provider'; W = 190 }, @{ H = 'Gebruiker/SID'; P = 'User'; W = 160 },
-            @{ H = 'Bericht'; P = 'Summary'; W = 520 }, @{ H = 'Correlation ID'; P = 'Correlation'; W = 250 })
+            @{ H = 'Time'; P = 'Time'; W = 150; F = 'yyyy-MM-dd HH:mm:ss' }, @{ H = 'Level'; P = 'LevelDisplay'; W = 110; M = 'LevelNumber' }, @{ H = 'ID'; P = 'EventId'; W = 60 },
+            @{ H = 'Marked'; P = 'MarkedText'; W = 90 }, @{ H = 'Log'; P = 'LogName'; W = 210 }, @{ H = 'Provider'; P = 'Provider'; W = 190 }, @{ H = 'User/SID'; P = 'User'; W = 160 },
+            @{ H = 'Message'; P = 'Summary'; W = 520 }, @{ H = 'Correlation ID'; P = 'Correlation'; W = 250 })
         GridLogFiles   = @(
-            @{ H = 'Map'; P = 'Folder'; W = 90 }, @{ H = 'Bestand'; P = 'Name'; W = 300 }, @{ H = 'Grootte'; P = 'SizeText'; W = 90; M = 'SizeBytes' }, @{ H = 'Laatst gewijzigd'; P = 'Modified'; W = 160; F = 'yyyy-MM-dd HH:mm:ss' })
+            @{ H = 'Folder'; P = 'Folder'; W = 90 }, @{ H = 'File'; P = 'Name'; W = 300 }, @{ H = 'Size'; P = 'SizeText'; W = 90; M = 'SizeBytes' }, @{ H = 'Last modified'; P = 'Modified'; W = 160; F = 'yyyy-MM-dd HH:mm:ss' })
         GridLogLines   = @(
-            @{ H = '#'; P = 'Number'; W = 60 }, @{ H = 'Niveau'; P = 'Level'; W = 70 }, @{ H = 'Regel'; P = 'Text'; W = 1400 })
+            @{ H = '#'; P = 'Number'; W = 60 }, @{ H = 'Level'; P = 'Level'; W = 70 }, @{ H = 'Line'; P = 'Text'; W = 1400 })
         GridHealth     = @(
-            @{ H = 'Categorie'; P = 'Category'; W = 90 }, @{ H = 'Controle'; P = 'Check'; W = 260 }, @{ S = $true; H = 'Status'; W = 135 }, @{ H = 'Resultaat'; P = 'Result'; W = 320 },
-            @{ H = 'Bewijs / databron'; P = 'Evidence'; W = 260 }, @{ H = 'Aanbeveling'; P = 'Recommendation'; W = 340 }, @{ H = 'Tijdstip'; P = 'Time'; W = 140 })
+            @{ H = 'Category'; P = 'Category'; W = 90 }, @{ H = 'Check'; P = 'Check'; W = 260 }, @{ S = $true; H = 'Status'; W = 135 }, @{ H = 'Result'; P = 'Result'; W = 320 },
+            @{ H = 'Evidence / data source'; P = 'Evidence'; W = 260 }, @{ H = 'Recommendation'; P = 'Recommendation'; W = 340 }, @{ H = 'Time'; P = 'Time'; W = 140 })
         GridDashIssues = @(
-            @{ S = $true; H = 'Status'; W = 135 }, @{ H = 'Categorie'; P = 'Category'; W = 90 }, @{ H = 'Controle'; P = 'Check'; W = 240 }, @{ H = 'Resultaat'; P = 'Result'; W = 340 }, @{ H = 'Aanbeveling'; P = 'Recommendation'; W = 400 })
+            @{ S = $true; H = 'Status'; W = 135 }, @{ H = 'Category'; P = 'Category'; W = 90 }, @{ H = 'Check'; P = 'Check'; W = 240 }, @{ H = 'Result'; P = 'Result'; W = 340 }, @{ H = 'Recommendation'; P = 'Recommendation'; W = 400 })
     }
 }
 
@@ -376,38 +376,38 @@ function Update-FslUiDashboard {
     if (-not $snap) { return }
     $sys = $snap.System; $inst = $snap.Install
     $installed = [bool]($inst -and $inst.Installed)
-    $na = 'Niet beschikbaar'
+    $na = 'Not available'
     $add = { param($t, $v, $s, $sub) [void]$cards.Children.Add((New-FslUiCard -Title $t -Value $v -Status $s -Sub $sub)) }
-    & $add 'Computernaam' $(if ($sys) { $sys.ComputerName } else { $na }) 'NA' ''
-    & $add 'Windows-product' $(if ($sys) { $sys.ProductName } else { $na }) $(if ($sys) { 'NA' } else { 'Unknown' }) ''
-    & $add 'Windows-versie' $(if ($sys) { "$($sys.DisplayVersion) ($($sys.Version))" } else { $na }) $(if ($sys) { 'NA' } else { 'Unknown' }) ''
-    & $add 'Windows-build en UBR' $(if ($sys) { $sys.BuildFull } else { $na }) $(if ($sys) { 'NA' } else { 'Unknown' }) ''
-    & $add 'Laatste cumulatieve update' $(if ($sys -and $sys.LastUpdateDate) { "$($sys.LastUpdateTitle) ($($sys.LastUpdateDate.ToString('yyyy-MM-dd')))" } else { 'Onbekend' }) $(if ($sys -and $sys.LastUpdateDate) { $(if (((Get-Date) - $sys.LastUpdateDate).TotalDays -gt 90) { 'Warning' } else { 'OK' }) } else { 'Unknown' }) ''
+    & $add 'Computer name' $(if ($sys) { $sys.ComputerName } else { $na }) 'NA' ''
+    & $add 'Windows product' $(if ($sys) { $sys.ProductName } else { $na }) $(if ($sys) { 'NA' } else { 'Unknown' }) ''
+    & $add 'Windows version' $(if ($sys) { "$($sys.DisplayVersion) ($($sys.Version))" } else { $na }) $(if ($sys) { 'NA' } else { 'Unknown' }) ''
+    & $add 'Windows build and UBR' $(if ($sys) { $sys.BuildFull } else { $na }) $(if ($sys) { 'NA' } else { 'Unknown' }) ''
+    & $add 'Last cumulative update' $(if ($sys -and $sys.LastUpdateDate) { "$($sys.LastUpdateTitle) ($($sys.LastUpdateDate.ToString('yyyy-MM-dd')))" } else { 'Unknown' }) $(if ($sys -and $sys.LastUpdateDate) { $(if (((Get-Date) - $sys.LastUpdateDate).TotalDays -gt 90) { 'Warning' } else { 'OK' }) } else { 'Unknown' }) ''
     & $add 'Uptime' $(if ($sys) { $sys.UptimeText } else { $na }) $(if ($sys) { $(if ($sys.Uptime.TotalDays -gt 60) { 'Warning' } else { 'OK' }) } else { 'Unknown' }) ''
-    & $add 'FSLogix geïnstalleerd' $(if ($installed) { 'Ja' } else { 'Nee' }) $(if ($installed) { 'OK' } else { 'NA' }) $(if ($installed) { '' } else { 'Niet geïnstalleerd' })
-    & $add 'FSLogix-versie' $(if ($installed -and $inst.Version) { $inst.Version } elseif ($installed) { $na } else { 'Niet geïnstalleerd' }) $(if ($installed -and $inst.Version) { 'OK' } elseif ($installed) { 'Unknown' } else { 'NA' }) ''
+    & $add 'FSLogix installed' $(if ($installed) { 'Yes' } else { 'No' }) $(if ($installed) { 'OK' } else { 'NA' }) $(if ($installed) { '' } else { 'Not installed' })
+    & $add 'FSLogix version' $(if ($installed -and $inst.Version) { $inst.Version } elseif ($installed) { $na } else { 'Not installed' }) $(if ($installed -and $inst.Version) { 'OK' } elseif ($installed) { 'Unknown' } else { 'NA' }) ''
     $svc = @($snap.Services | Where-Object { $_.Name -eq 'frxsvc' }) | Select-Object -First 1
-    & $add 'FSLogix-service (frxsvc)' $(if ($svc) { $svc.State } else { $na }) $(if ($svc) { $svc.Status } else { 'Unknown' }) ''
+    & $add 'FSLogix service (frxsvc)' $(if ($svc) { $svc.State } else { $na }) $(if ($svc) { $svc.Status } else { 'Unknown' }) ''
     $a = if ($sys) { $sys.Avd } else { $null }
-    & $add 'AVD Agent-versie' $(if ($a -and $a.AgentInstalled) { $a.AgentVersion } else { 'Niet geïnstalleerd' }) $(if ($a -and $a.AgentInstalled) { 'OK' } else { 'Unknown' }) ''
-    & $add 'AVD Boot Loader-versie' $(if ($a -and $a.BootLoaderInstalled) { $a.BootLoaderVersion } else { 'Niet geïnstalleerd' }) $(if ($a -and $a.BootLoaderInstalled) { 'OK' } else { 'Unknown' }) ''
+    & $add 'AVD Agent version' $(if ($a -and $a.AgentInstalled) { $a.AgentVersion } else { 'Not installed' }) $(if ($a -and $a.AgentInstalled) { 'OK' } else { 'Unknown' }) ''
+    & $add 'AVD Boot Loader version' $(if ($a -and $a.BootLoaderInstalled) { $a.BootLoaderVersion } else { 'Not installed' }) $(if ($a -and $a.BootLoaderInstalled) { 'OK' } else { 'Unknown' }) ''
     $sess = @($snap.Sessions)
-    $active = @($sess | Where-Object { $_.State -in 'Active', 'Actief' }).Count
-    & $add 'Actieve gebruikerssessies' $(if ($null -ne $snap.Sessions) { "$active actief ($($sess.Count) totaal)" } else { $na }) $(if ($null -ne $snap.Sessions) { 'NA' } else { 'Unknown' }) ''
+    $active = @($sess | Where-Object { $_.State -in 'Active', 'Active' }).Count
+    & $add 'Active user sessions' $(if ($null -ne $snap.Sessions) { "$active active ($($sess.Count) total)" } else { $na }) $(if ($null -ne $snap.Sessions) { 'NA' } else { 'Unknown' }) ''
     $cn = if ($snap.Containers) { @($snap.Containers.Rows).Count } else { $null }
-    & $add 'Gekoppelde FSLogix-containers' $(if ($null -ne $cn -and ($installed -or $cn -gt 0)) { "$cn" } elseif ($installed) { $na } else { 'Niet geïnstalleerd' }) $(if ($null -ne $cn -and $installed) { 'NA' } else { 'Unknown' }) ''
+    & $add 'Mounted FSLogix containers' $(if ($null -ne $cn -and ($installed -or $cn -gt 0)) { "$cn" } elseif ($installed) { $na } else { 'Not installed' }) $(if ($null -ne $cn -and $installed) { 'NA' } else { 'Unknown' }) ''
     $ev = $snap.Events
-    $hoursText = if ($snap.LookbackHours -ge 24) { "$([math]::Round($snap.LookbackHours / 24)) dag(en)" } else { "$($snap.LookbackHours) uur" }
+    $hoursText = if ($snap.LookbackHours -ge 24) { "$([math]::Round($snap.LookbackHours / 24)) day(s)" } else { "$($snap.LookbackHours) hours" }
     if ($ev -and $ev.PresentLogs.Count -gt 0) {
         $es = if ($ev.ErrorCount -ge 10) { 'Error' } elseif ($ev.ErrorCount -gt 0) { 'Warning' } else { 'OK' }
-        & $add "FSLogix-errors (laatste $hoursText)" "$($ev.ErrorCount) error(s), $($ev.WarningCount) warning(s)" $es ''
-    } else { & $add "FSLogix-errors (laatste $hoursText)" $(if ($installed) { 'Eventlog niet beschikbaar' } else { 'Niet geïnstalleerd' }) $(if ($installed) { 'Unknown' } else { 'NA' }) '' }
-    & $add 'Laatste refresh' $(if ($snap.Finished) { $snap.Finished.ToString('yyyy-MM-dd HH:mm:ss') } else { $na }) 'NA' ''
+        & $add "FSLogix errors (last $hoursText)" "$($ev.ErrorCount) error(s), $($ev.WarningCount) warning(s)" $es ''
+    } else { & $add "FSLogix errors (last $hoursText)" $(if ($installed) { 'Event log not available' } else { 'Not installed' }) $(if ($installed) { 'Unknown' } else { 'NA' }) '' }
+    & $add 'Last refresh' $(if ($snap.Finished) { $snap.Finished.ToString('yyyy-MM-dd HH:mm:ss') } else { $na }) 'NA' ''
     $sc = $snap.Score
-    & $add 'Algemene gezondheid' $(if ($sc -and $null -ne $sc.Score) { "$($sc.Score) / 100" } else { 'Onbekend' }) $(if ($sc) { $sc.Status } else { 'Unknown' }) $(if ($sc -and -not $installed) { 'FSLogix niet geïnstalleerd' } elseif ($sc) { "dekking $($sc.Coverage)%" } else { '' })
+    & $add 'Overall health' $(if ($sc -and $null -ne $sc.Score) { "$($sc.Score) / 100" } else { 'Unknown' }) $(if ($sc) { $sc.Status } else { 'Unknown' }) $(if ($sc -and -not $installed) { 'FSLogix not installed' } elseif ($sc) { "coverage $($sc.Coverage)%" } else { '' })
 
     if (-not $installed) {
-        $script:Ui.TxtBanner.Text = 'FSLogix is niet geïnstalleerd op deze host. Onderdelen die FSLogix vereisen worden als "Niet geïnstalleerd" of "Niet beschikbaar" getoond; overige Windows-, AVD- en opslaggegevens blijven beschikbaar.'
+        $script:Ui.TxtBanner.Text = 'FSLogix is not installed on this host. Components that require FSLogix are shown as "Not installed" or "Not available"; other Windows, AVD and storage data remain available.'
         $script:Ui.BdrBanner.Visibility = 'Visible'
     } else { $script:Ui.BdrBanner.Visibility = 'Collapsed' }
 
@@ -424,7 +424,7 @@ function Update-FslUiHealth {
     $script:Ui.TxtScore.Foreground = Get-FslUiBrush (Get-FslUiStatusColor $status)
     $script:Ui.TxtScoreStatus.Text = ('{0} {1}' -f (Get-FslStatusGlyph $status), (Get-FslStatusText $status))
     $script:Ui.TxtScoreStatus.Foreground = Get-FslUiBrush (Get-FslUiStatusColor $status)
-    if ($sc) { $script:Ui.TxtScoreDetail.Text = "$($sc.Scored) gescoorde controles, $($sc.Errors) fout, $($sc.Warnings) waarschuwing, $($sc.Unknown) onbekend (niet meegeteld als fout). Dekking: $($sc.Coverage)%." }
+    if ($sc) { $script:Ui.TxtScoreDetail.Text = "$($sc.Scored) scored checks, $($sc.Errors) error, $($sc.Warnings) warning, $($sc.Unknown) unknown (not counted as errors). Coverage: $($sc.Coverage)%." }
     $filter = "$($script:Ui.CmbHealthFilter.SelectedItem.Tag)"
     $rows = @($snap.Health)
     switch ($filter) {
@@ -456,7 +456,7 @@ function Update-FslUiSessions {
     $t = $script:Ui.TxtSesSearch.Text
     if ($t) { $rows = @($rows | Where-Object { Test-FslUiRowMatch $_ @('User', 'Domain', 'Sid', 'State', 'ProfilePath', 'ContainerPath', 'VhdFile') $t }) }
     Set-FslUiGridData -GridName 'GridSessions' -Rows $rows
-    $script:Ui.TxtSesCount.Text = "$($rows.Count) sessie(s)"
+    $script:Ui.TxtSesCount.Text = "$($rows.Count) session(s)"
 }
 
 function Update-FslUiContainers {
@@ -471,16 +471,16 @@ function Update-FslUiContainers {
     Set-FslUiGridData -GridName 'GridSmb' -Rows $(if ($c) { @($c.Smb) } else { @() })
     $profs = if ($c) { @($c.LocalProfiles | ForEach-Object { $_ | Select-Object Sid, User, LocalPath, Loaded, @{ n = 'ProfileStatus'; e = { $_.Status } }, LastUse }) } else { @() }
     Set-FslUiGridData -GridName 'GridProfiles' -Rows $profs
-    $script:Ui.TxtFrxRaw.Text = if ($c -and $c.FrxOutput) { $c.FrxOutput } elseif ($c) { "(geen uitvoer)`r`n$($c.FrxNote)" } else { '' }
-    $script:Ui.TxtCtNote.Text = if ($c -and $c.FrxNote) { $c.FrxNote + ' De frx-uitvoer wordt op basis van SID/VHD-pad geparsed (best effort); controleer de raw uitvoer bij twijfel.' } else { 'De frx-uitvoer wordt op basis van SID/VHD-pad geparsed (best effort); controleer de raw uitvoer bij twijfel.' }
+    $script:Ui.TxtFrxRaw.Text = if ($c -and $c.FrxOutput) { $c.FrxOutput } elseif ($c) { "(no output)`r`n$($c.FrxNote)" } else { '' }
+    $script:Ui.TxtCtNote.Text = if ($c -and $c.FrxNote) { $c.FrxNote + ' The frx output is parsed by SID/VHD path (best effort); check the raw output when in doubt.' } else { 'The frx output is parsed by SID/VHD path (best effort); check the raw output when in doubt.' }
 }
 
 # ------------------------------------------------------------------ events
 function Update-FslUiEventLogList {
     $cmb = $script:Ui.CmbEvLog
-    $sel = if ($cmb.SelectedItem) { "$($cmb.SelectedItem)" } else { 'Alle logs' }
+    $sel = if ($cmb.SelectedItem) { "$($cmb.SelectedItem)" } else { 'All logs' }
     $cmb.Items.Clear()
-    [void]$cmb.Items.Add('Alle logs')
+    [void]$cmb.Items.Add('All logs')
     if ($script:Snap -and $script:Snap.Events) { foreach ($l in $script:Snap.Events.PresentLogs) { [void]$cmb.Items.Add($l) } }
     $idx = $cmb.Items.IndexOf($sel); if ($idx -lt 0) { $idx = 0 }
     $cmb.SelectedIndex = $idx
@@ -489,10 +489,10 @@ function Update-FslUiEventLogList {
 function Update-FslUiEvents {
     $snap = $script:Snap
     $ev = if ($snap) { $snap.Events } else { $null }
-    if (-not $ev) { Set-FslUiGridData -GridName 'GridEvents' -Rows @(); $script:Ui.TxtEvCount.Text = ''; $script:Ui.TxtEvNote.Text = 'Geen eventgegevens beschikbaar.'; return }
+    if (-not $ev) { Set-FslUiGridData -GridName 'GridEvents' -Rows @(); $script:Ui.TxtEvCount.Text = ''; $script:Ui.TxtEvNote.Text = 'No event data available.'; return }
     $rows = @($ev.Rows)
     $log = "$($script:Ui.CmbEvLog.SelectedItem)"
-    if ($log -and $log -ne 'Alle logs') { $rows = @($rows | Where-Object { $_.LogName -eq $log }) }
+    if ($log -and $log -ne 'All logs') { $rows = @($rows | Where-Object { $_.LogName -eq $log }) }
     $ids = @()
     foreach ($p in ($script:Ui.TxtEvId.Text -split '[,; ]+')) { $n = 0; if ([int]::TryParse($p, [ref]$n)) { $ids += $n } }
     if ($ids.Count -gt 0) { $rows = @($rows | Where-Object { $ids -contains $_.EventId }) }
@@ -507,18 +507,18 @@ function Update-FslUiEvents {
             $_ | Select-Object *, @{ n = 'LevelDisplay'; e = { '{0} {1}' -f (Get-FslStatusGlyph $(if ($_.LevelNumber -le 2 -and $_.LevelNumber -ge 1) { 'Error' } elseif ($_.LevelNumber -eq 3) { 'Warning' } else { 'OK' })), $_.Level } }
         })
     Set-FslUiGridData -GridName 'GridEvents' -Rows $shown
-    $script:Ui.TxtEvCount.Text = "$($rows.Count) event(s)" + $(if ($rows.Count -gt 5000) { ' (eerste 5000 getoond)' } else { '' }) + " sinds $($ev.Start.ToString('yyyy-MM-dd HH:mm'))"
+    $script:Ui.TxtEvCount.Text = "$($rows.Count) event(s)" + $(if ($rows.Count -gt 5000) { ' (first 5000 shown)' } else { '' }) + " since $($ev.Start.ToString('yyyy-MM-dd HH:mm'))"
     $note = ''
-    if ($ev.MissingLogs.Count -gt 0) { $note += 'Niet aanwezig op deze host: ' + ($ev.MissingLogs -join ', ') + '. ' }
-    $note += 'Gemarkeerde Event ID''s (configureerbaar): ' + ($script:Config.MarkedEventIds -join ', ') + '. De betekenis van een ID hangt af van provider, log en berichttekst.'
+    if ($ev.MissingLogs.Count -gt 0) { $note += 'Not present on this host: ' + ($ev.MissingLogs -join ', ') + '. ' }
+    $note += 'Marked Event IDs (configurable): ' + ($script:Config.MarkedEventIds -join ', ') + '. The meaning of an ID depends on the provider, log and message text.'
     $script:Ui.TxtEvNote.Text = $note
 }
 
 function Show-FslUiEventDetail {
     $rows = @(Get-FslUiSelectedRows 'GridEvents')
-    if ($rows.Count -eq 0) { Show-FslUiMessage 'Selecteer eerst een event.'; return }
+    if ($rows.Count -eq 0) { Show-FslUiMessage 'Select an event first.'; return }
     $r = $rows[0].Row
-    $text = "Tijdstip: $($r['Time'])`r`nLog: $($r['LogName'])`r`nProvider: $($r['Provider'])`r`nEvent ID: $($r['EventId'])`r`nNiveau: $($r['Level'])`r`nGebruiker/SID: $($r['User'])`r`nCorrelation ID: $($r['Correlation'])`r`n`r`n$($r['Message'])"
+    $text = "Time: $($r['Time'])`r`nLog: $($r['LogName'])`r`nProvider: $($r['Provider'])`r`nEvent ID: $($r['EventId'])`r`nLevel: $($r['Level'])`r`nUser/SID: $($r['User'])`r`nCorrelation ID: $($r['Correlation'])`r`n`r`n$($r['Message'])"
     Show-FslUiTextWindow -Title "Event $($r['EventId'])" -Text $text
 }
 
@@ -530,29 +530,29 @@ function Update-FslUiLogFileList {
         $d = $script:Ui.DpLogDate.SelectedDate
         if ($d) { $files = @($files | Where-Object { $_.Modified.Date -eq $d.Date }) }
         Set-FslUiGridData -GridName 'GridLogFiles' -Rows $files
-        if (@($res).Count -eq 0) { $script:Ui.TxtLogInfo.Text = 'Geen FSLogix-logbestanden gevonden onder C:\ProgramData\FSLogix\Logs (Profile, ODFC, CloudCache).' }
+        if (@($res).Count -eq 0) { $script:Ui.TxtLogInfo.Text = 'No FSLogix log files found under C:\ProgramData\FSLogix\Logs (Profile, ODFC, CloudCache).' }
         elseif ($files.Count -gt 0 -and -not $script:LogPath) { $script:Ui.GridLogFiles.SelectedIndex = 0 }
     }
 }
 
 function Open-FslUiLogFile {
     $rows = @(Get-FslUiSelectedRows 'GridLogFiles')
-    if ($rows.Count -eq 0) { Show-FslUiMessage 'Selecteer eerst een logbestand.'; return }
+    if ($rows.Count -eq 0) { Show-FslUiMessage 'Select a log file first.'; return }
     $path = "$($rows[0].Row['Name'])"
     $folder = "$($rows[0].Row['Folder'])"
     $match = @($script:CurrentRows['GridLogFiles'] | Where-Object { $_.Name -eq $path -and $_.Folder -eq $folder }) | Select-Object -First 1
     if (-not $match) { return }
     $bytes = [int64]("$($script:Ui.CmbLogTail.SelectedItem.Tag)")
     if ($bytes -le 0) { $bytes = 1048576 }
-    $script:Ui.TxtLogInfo.Text = "Bezig met lezen van $($match.Name)..."
+    $script:Ui.TxtLogInfo.Text = "Reading $($match.Name)..."
     $script:LogPath = $match.Path
     Start-FslUiJob -Name 'logread' -ArgumentList @($match.Path, $bytes) -Script { param($p, $b) Read-FslLogTail -Path $p -MaxBytes $b } -OnDone {
         param($res, $errs)
         $r = @($res) | Select-Object -Last 1
-        if (-not $r -or $r.Error) { $script:Ui.TxtLogInfo.Text = "Lezen mislukt: $(if ($r) { $r.Error } else { $errs -join '; ' })"; $script:LogRaw = @(); Set-FslUiGridData -GridName 'GridLogLines' -Rows @(); return }
+        if (-not $r -or $r.Error) { $script:Ui.TxtLogInfo.Text = "Read failed: $(if ($r) { $r.Error } else { $errs -join '; ' })"; $script:LogRaw = @(); Set-FslUiGridData -GridName 'GridLogLines' -Rows @(); return }
         $script:LogRaw = @($r.Lines)
         $script:LogTruncated = $r.Truncated
-        $script:LogInfoBase = ('{0}: {1} van {2} gelezen{3}' -f [IO.Path]::GetFileName($script:LogPath), (Format-FslBytes $r.ReadBytes), (Format-FslBytes $r.FileBytes), $(if ($r.Truncated) { ' (alleen het einde van het bestand)' } else { '' }))
+        $script:LogInfoBase = ('{0}: {1} of {2} read{3}' -f [IO.Path]::GetFileName($script:LogPath), (Format-FslBytes $r.ReadBytes), (Format-FslBytes $r.FileBytes), $(if ($r.Truncated) { ' (end of file only)' } else { '' }))
         Update-FslUiLogView
     }
 }
@@ -569,7 +569,7 @@ function Update-FslUiLogView {
         $rows = @($res)
         $script:LogShown = $rows
         Set-FslUiGridData -GridName 'GridLogLines' -Rows $rows
-        $script:Ui.TxtLogInfo.Text = "$($script:LogInfoBase) - $($rows.Count) regel(s) getoond"
+        $script:Ui.TxtLogInfo.Text = "$($script:LogInfoBase) - $($rows.Count) line(s) shown"
         if ($rows.Count -gt 0) { $script:Ui.GridLogLines.ScrollIntoView($script:Ui.GridLogLines.Items[$script:Ui.GridLogLines.Items.Count - 1]) }
     }
 }
@@ -579,33 +579,33 @@ function Start-FslUiRefresh {
     if ($script:Refreshing) { return }
     $script:Refreshing = $true
     $script:RefreshStart = Get-Date
-    $script:Sync = [hashtable]::Synchronized(@{ Step = 'Starten'; Progress = 0 })
+    $script:Sync = [hashtable]::Synchronized(@{ Step = 'Starting'; Progress = 0 })
     $script:Ui.BtnRefresh.IsEnabled = $false
     $script:Ui.PbRefresh.Value = 0
-    $script:Ui.TxtStatus.Text = 'Controleren: starten'
+    $script:Ui.TxtStatus.Text = 'Checking: starting'
     $hours = 24
     try { $hours = [int]("$($script:Ui.CmbPeriod.SelectedItem.Tag)") } catch { }
     $script:Config.LookbackHours = $hours
     $opts = @{ Config = $script:Config; LookbackHours = $hours }
-    Write-FslLog -Level INFO -Message 'Refresh gestart door gebruiker of timer'
+    Write-FslLog -Level INFO -Message 'Refresh started by user or timer'
     Start-FslUiJob -Name 'refresh' -ArgumentList @($opts, $script:Sync) -Script { param($o, $s) Invoke-FslCollectAll -Options $o -Sync $s } -OnDone {
         param($res, $errs)
         $script:Refreshing = $false
         $script:Ui.BtnRefresh.IsEnabled = $true
         $snap = @($res | Where-Object { $_ -is [hashtable] -and $_.ContainsKey('Started') }) | Select-Object -Last 1
         if (-not $snap) {
-            $script:Ui.TxtStatus.Text = 'Refresh mislukt'
-            Show-FslUiError -Short 'Het verzamelen van gegevens is mislukt.' -Detail ($errs -join "`r`n")
+            $script:Ui.TxtStatus.Text = 'Refresh failed'
+            Show-FslUiError -Short 'Collecting data failed.' -Detail ($errs -join "`r`n")
             return
         }
         $script:Snap = $snap
         Update-FslUiAll
         $sec = ((Get-Date) - $script:RefreshStart).TotalSeconds
         $script:Ui.PbRefresh.Value = 100
-        $script:Ui.TxtStatus.Text = ('Gereed - refresh duurde {0:N1} s' -f $sec)
-        $script:Ui.TxtLast.Text = ('Laatste refresh: {0} (start {1}, einde {2})' -f $snap.Finished.ToString('HH:mm:ss'), $snap.Started.ToString('HH:mm:ss'), $snap.Finished.ToString('HH:mm:ss'))
+        $script:Ui.TxtStatus.Text = ('Ready - refresh took {0:N1} s' -f $sec)
+        $script:Ui.TxtLast.Text = ('Last refresh: {0} (start {1}, end {2})' -f $snap.Finished.ToString('HH:mm:ss'), $snap.Started.ToString('HH:mm:ss'), $snap.Finished.ToString('HH:mm:ss'))
         $n = @($snap.Errors).Count
-        $script:Ui.BtnErrors.Content = "Databronfouten ($n)"
+        $script:Ui.BtnErrors.Content = "Data source errors ($n)"
         if ($script:AfterFirstRefresh) {
             # developer screenshot hook: must not run inside the timer tick (nested pumping would stall job polling)
             $cb = $script:AfterFirstRefresh; $script:AfterFirstRefresh = $null
@@ -650,43 +650,43 @@ function Invoke-FslUiExport {
     param([string]$GridName, [ValidateSet('csv', 'json', 'html')][string]$Format, [string]$Title, [string]$BaseName)
     try {
         $rows = $script:CurrentRows[$GridName]
-        if (-not $rows -or @($rows).Count -eq 0) { Show-FslUiMessage 'Er zijn geen gegevens om te exporteren.'; return }
+        if (-not $rows -or @($rows).Count -eq 0) { Show-FslUiMessage 'There is no data to export.'; return }
         $filter = switch ($Format) { 'csv' { 'CSV (*.csv)|*.csv' } 'json' { 'JSON (*.json)|*.json' } default { 'HTML (*.html)|*.html' } }
         $file = Get-FslUiSaveFile -Filter $filter -DefaultName ("$BaseName-$((Get-Date).ToString('yyyyMMdd-HHmm')).$Format")
         if (-not $file) { return }
         $props = @(@($rows)[0].PSObject.Properties.Name | Where-Object { $_ -notin 'Glyph', 'Status', 'Raw', 'Details', 'LevelNumber', 'Marked', 'LevelDisplay' })
         $written = Export-FslRows -Rows $rows -Properties $props -Format $Format -Path $file -Title $Title
-        $script:Ui.TxtStatus.Text = "Export geschreven: $written"
-    } catch { Show-FslUiError -Short "Exporteren mislukt: $($_.Exception.Message)" -Detail ($_ | Out-String) }
+        $script:Ui.TxtStatus.Text = "Export written: $written"
+    } catch { Show-FslUiError -Short "Export failed: $($_.Exception.Message)" -Detail ($_ | Out-String) }
 }
 
 function Invoke-FslUiServiceAction {
     param([ValidateSet('Start', 'Stop', 'Restart')][string]$Action)
     $rows = @(Get-FslUiSelectedRows 'GridServices')
-    if ($rows.Count -eq 0) { Show-FslUiMessage 'Selecteer eerst een service (frxsvc of frxccds).'; return }
+    if ($rows.Count -eq 0) { Show-FslUiMessage 'Select a service first (frxsvc or frxccds).'; return }
     $r = $rows[0].Row
     $name = "$($r['Name'])"
-    if ($r['Kind'] -ne 'Service' -or $name -notin 'frxsvc', 'frxccds') { Show-FslUiMessage 'Serviceacties zijn alleen toegestaan voor de services frxsvc en frxccds.' 'FSL Master' 'Warning'; return }
-    $impact = if ($Action -ne 'Start') { "`n`nLET OP: het stoppen of herstarten van $name kan actieve gebruikerssessies en profielcontainers verstoren." } else { '' }
-    if (-not (Confirm-FslUiAction -Text "Weet u zeker dat u de service '$name' wilt uitvoeren: $Action ?$impact")) { return }
-    $script:Ui.TxtStatus.Text = "Uitvoeren: $Action $name"
+    if ($r['Kind'] -ne 'Service' -or $name -notin 'frxsvc', 'frxccds') { Show-FslUiMessage 'Service actions are only allowed for the services frxsvc and frxccds.' 'FSL Master' 'Warning'; return }
+    $impact = if ($Action -ne 'Start') { "`n`nWARNING: stopping or restarting $name can disrupt active user sessions and profile containers." } else { '' }
+    if (-not (Confirm-FslUiAction -Text "Are you sure you want to run this service action on '$name': $Action?$impact")) { return }
+    $script:Ui.TxtStatus.Text = "Running: $Action $name"
     Start-FslUiJob -Name 'svcaction' -ArgumentList @($name, $Action) -Script { param($n, $a) Invoke-FslServiceAction -Name $n -Action $a } -OnDone {
         param($res, $errs)
         $r = @($res) | Select-Object -Last 1
-        if ($r -and $r.Success) { Show-FslUiMessage $r.Message } else { Show-FslUiError -Short 'Serviceactie mislukt.' -Detail $(if ($r) { $r.Message } else { $errs -join "`r`n" }) }
+        if ($r -and $r.Success) { Show-FslUiMessage $r.Message } else { Show-FslUiError -Short 'Service action failed.' -Detail $(if ($r) { $r.Message } else { $errs -join "`r`n" }) }
         Start-FslUiRefresh
     }
 }
 
 function Invoke-FslUiReport {
     param([ValidateSet('html', 'json', 'csv', 'txt')][string]$Format)
-    if (-not $script:Snap) { Show-FslUiMessage 'Wacht tot de eerste refresh klaar is.'; return }
+    if (-not $script:Snap) { Show-FslUiMessage 'Wait until the first refresh has finished.'; return }
     try {
         $sanitize = [bool]$script:Ui.ChkSanitize.IsChecked
-        $filter = switch ($Format) { 'html' { 'HTML (*.html)|*.html' } 'json' { 'JSON (*.json)|*.json' } 'csv' { 'CSV (*.csv)|*.csv' } default { 'Tekst (*.txt)|*.txt' } }
-        $file = Get-FslUiSaveFile -Filter $filter -DefaultName ("fsl-master-rapport$(if ($sanitize) { '-sanitized' })-$((Get-Date).ToString('yyyyMMdd-HHmm')).$Format")
+        $filter = switch ($Format) { 'html' { 'HTML (*.html)|*.html' } 'json' { 'JSON (*.json)|*.json' } 'csv' { 'CSV (*.csv)|*.csv' } default { 'Text (*.txt)|*.txt' } }
+        $file = Get-FslUiSaveFile -Filter $filter -DefaultName ("fsl-master-report$(if ($sanitize) { '-sanitized' })-$((Get-Date).ToString('yyyyMMdd-HHmm')).$Format")
         if (-not $file) { return }
         $written = @(Export-FslReport -Snapshot $script:Snap -Format $Format -Path $file -Sanitized:$sanitize)
-        $script:Ui.TxtRepResult.Text = 'Geschreven:' + [Environment]::NewLine + ($written -join [Environment]::NewLine)
-    } catch { Show-FslUiError -Short "Rapport exporteren mislukt: $($_.Exception.Message)" -Detail ($_ | Out-String) }
+        $script:Ui.TxtRepResult.Text = 'Written:' + [Environment]::NewLine + ($written -join [Environment]::NewLine)
+    } catch { Show-FslUiError -Short "Report export failed: $($_.Exception.Message)" -Detail ($_ | Out-String) }
 }
