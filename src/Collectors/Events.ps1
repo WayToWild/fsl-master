@@ -5,6 +5,17 @@ function Test-FslEventLogExists {
     try { $null = Get-WinEvent -ListLog $LogName -ErrorAction Stop; return $true } catch { return $false }
 }
 
+function Test-FslBenignEventError {
+    # Get-WinEvent throws these when a filter simply matches nothing: no events, no such provider, or a provider that does not
+    # write to the queried log (LogsAndProvidersDontOverlap). Those mean "no FSLogix events here", not a failure.
+    # The error id is language independent; the message texts are English fallbacks.
+    param($ErrorRecord)
+    $id = "$($ErrorRecord.FullyQualifiedErrorId)"
+    $msg = "$($ErrorRecord.Exception.Message)"
+    ($id -like '*NoMatchingEventsFound*' -or $id -like '*NoMatchingProvider*' -or $id -like '*DontOverlap*') -or
+    ($msg -like '*No events were found*' -or $msg -like '*There is not an event provider*' -or $msg -like '*do not write events to any of the specified logs*')
+}
+
 function Get-FslEventUserName {
     param($Sid, [hashtable]$Cache)
     if (-not $Sid) { return '' }
@@ -62,7 +73,7 @@ function Get-FslEvents {
                 foreach ($pattern in '*FSLogix*', 'frx*') {
                     try { $events += @(Get-WinEvent -FilterHashtable @{ LogName = $log; StartTime = $StartTime; ProviderName = $pattern } -MaxEvents $MaxEvents -ErrorAction Stop) }
                     catch {
-                        if ("$($_.FullyQualifiedErrorId)" -like '*NoMatching*' -or $_.Exception.Message -like '*No events were found*' -or $_.Exception.Message -like '*There is not an event provider*') { continue }
+                        if (Test-FslBenignEventError $_) { continue }
                         throw
                     }
                 }
@@ -71,7 +82,7 @@ function Get-FslEvents {
                         $events += @(Get-WinEvent -FilterHashtable @{ LogName = $log; StartTime = $StartTime; ProviderName = 'Service Control Manager'; Level = 1, 2, 3 } -MaxEvents $MaxEvents -ErrorAction Stop |
                                 Where-Object { $_.Message -match $spec.Filter })
                     } catch {
-                        if (-not ("$($_.FullyQualifiedErrorId)" -like '*NoMatching*' -or $_.Exception.Message -like '*No events were found*' -or $_.Exception.Message -like '*There is not an event provider*')) { throw }
+                        if (-not (Test-FslBenignEventError $_)) { throw }
                     }
                 }
             } else {
@@ -80,7 +91,7 @@ function Get-FslEvents {
             foreach ($e in $events) { $rows.Add((ConvertTo-FslEventRow -Event $e -MarkedIds $MarkedIds -UserCache $userCache)) }
         } catch {
             $fq = "$($_.FullyQualifiedErrorId)"
-            if ($fq -like '*NoMatchingEventsFound*' -or $_.Exception.Message -like '*No events were found*') { continue }
+            if (Test-FslBenignEventError $_) { continue }
             if ($fq -like '*NoMatchingLogsFound*') { $missing.Add($log); $null = $present.Remove($log); continue }
             $errors.Add("${log}: $($_.Exception.Message)")
         }

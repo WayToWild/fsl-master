@@ -6,7 +6,7 @@ function Get-FslAppInfo {
     [pscustomobject]@{
         Name        = 'FSL Master'
         Description = 'Local FSLogix diagnostics and monitoring for Azure Virtual Desktop'
-        Version     = '0.2.0'
+        Version     = '0.2.1'
         License     = 'MIT'
         RepoUrl     = 'https://github.com/WayToWild/fsl-master'
     }

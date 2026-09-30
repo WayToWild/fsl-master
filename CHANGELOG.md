@@ -2,6 +2,10 @@
 
 Notable changes to FSL Master. Format: [Keep a Changelog](https://keepachangelog.com/), versions: [SemVer](https://semver.org/).
 
+## [0.2.1] - 2026-09-30
+
+### Fixed
+- Event log collection no longer reports "The specified providers do not write events to any of the specified logs" as a data source error on hosts where the FSLogix provider filter does not overlap with the Application/System log. Benign Get-WinEvent results are now recognised by their language-independent error id as well as by message text.
 ## [0.2.0] - 2026-09-29
 
 ### Added

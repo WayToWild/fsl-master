@@ -247,6 +247,18 @@ Describe 'Event log handling' {
         }
     }
     Context 'ctx' {
+        It 'treats "providers do not write events to the specified logs" as no events, not as an error' {
+            Mock Test-FslEventLogExists { $true }
+            Mock Get-WinEvent { throw (New-Object Exception 'The specified providers do not write events to any of the specified logs.') }
+            $r = Get-FslEvents -StartTime (Get-Date).AddHours(-1)
+            $r.Errors.Count | Should Be 0
+        }
+        It 'recognises the language independent error id' {
+            $er = New-Object Management.Automation.ErrorRecord ((New-Object Exception 'localized text'), 'LogsAndProvidersDontOverlap,Microsoft.PowerShell.Commands.GetWinEventCommand', 'InvalidArgument', $null)
+            Test-FslBenignEventError $er | Should Be $true
+            $er2 = New-Object Management.Automation.ErrorRecord ((New-Object Exception 'Access is denied'), 'Other', 'InvalidArgument', $null)
+            Test-FslBenignEventError $er2 | Should Be $false
+        }
         It 'reports a real read failure as an error without throwing' {
             Mock Test-FslEventLogExists { $true }
             Mock Get-WinEvent { throw (New-Object Exception 'Access denied') }

@@ -17,7 +17,7 @@ $src = Join-Path $root 'src'
 $dist = Join-Path $root 'dist'
 $buildDir = Join-Path $root 'build'
 $ps2exeVersion = '1.0.18'
-$version = '0.2.0'
+$version = '0.2.1'
 $steps = New-Object System.Collections.Generic.List[string]
 function Step($m) { $steps.Add($m); Write-Output ("[build] " + $m) }
 function Fail($m) { throw "BUILD FAILED: $m" }
